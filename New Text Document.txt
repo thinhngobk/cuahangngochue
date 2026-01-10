@@ -1,0 +1,29 @@
+pip install django django-unfold unidecode python-dotenv tzdata pillow openpyxl pandas
+python manage.py makemigrations
+python manage.py migrate
+python manage.py createsuperuser
+venv\Scripts\activate
+python -m venv venv
+python manage.py runserver
+python manage.py runserver --settings=config.settings
+
+my_project/
+├── config/
+│   ├── settings.py
+│   └── urls.py
+├── app_quan_ly/
+│   ├── migrations/
+│   ├── models.py
+│   └── views
+├── templates/
+│   └── pos.html
+└── manage.py
+# Chạy tất cả test
+python manage.py shell < create_test_data.py
+
+1. nhân viên Tạo đơn bán/hoàn/phiếu thu (có nút lưu nháp và lưu duyệt) => admin duyệt ghi sổ
+2. admin tạo tự động duyệt
+3 tạo hoá đơn khách hang trả tự động tạo hoá đơn và phiếu thu
+4. Nhân viên có quyền tạo, xem, huỷ, chỉnh sửa khi pending
+,
+cây thư mục: models,signals, app.py, admin.py view/(customer_views,ledger_views,page_views,product_views,return_views,helper_views,receipt_views)

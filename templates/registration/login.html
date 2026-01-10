@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập hệ thống</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 h-screen flex items-center justify-center font-sans">
+
+    <div class="w-full max-w-md p-8">
+        <div class="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 p-10 border border-slate-100">
+            <div class="text-center mb-10">
+                <h1 class="text-3xl font-black text-slate-800 uppercase tracking-tight">Hệ Thống</h1>
+                <p class="text-slate-400 font-bold text-sm mt-2 uppercase tracking-widest">Quản lý hóa đơn</p>
+            </div>
+
+            {% if form.errors %}
+            <div class="mb-6 p-4 bg-rose-50 border-l-4 border-rose-500 text-rose-600 text-sm font-bold rounded-r-xl">
+                Tên đăng nhập hoặc mật khẩu không đúng!
+            </div>
+            {% endif %}
+
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+                
+                <div>
+                    <label class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Tên đăng nhập</label>
+                    <input type="text" name="username" required
+                        class="w-full p-4 bg-slate-50 border-2 border-slate-50 rounded-2xl outline-none focus:border-blue-500 focus:bg-white transition-all font-bold text-slate-700">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Mật khẩu</label>
+                    <input type="password" name="password" required
+                        class="w-full p-4 bg-slate-50 border-2 border-slate-50 rounded-2xl outline-none focus:border-blue-500 focus:bg-white transition-all font-bold text-slate-700">
+                </div>
+
+                <button type="submit" 
+                    class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black shadow-lg shadow-blue-200 transition-all active:scale-[0.98]">
+                    ĐĂNG NHẬP
+                </button>
+            </form>
+
+            <div class="mt-8 text-center">
+                <p class="text-slate-400 text-xs font-medium">© 2026 Quản lý bán hàng nội bộ</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

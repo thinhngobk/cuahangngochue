@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hóa đơn #{{ hoadon.mahoadonban }}</title>
+    <style>
+        @media print {
+            @page {
+                size: A4;
+                margin: 10mm;
+            }
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #000;
+            background: #fff;
+        }
+
+        .invoice-container {
+            max-width: 210mm;
+            margin: 10px auto;
+            padding: 10mm;
+            background: white;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #000;
+        }
+
+        .customer-info {
+            flex: 1;
+        }
+
+        .company-info {
+            text-align: right;
+            font-size: 11px;
+        }
+
+        .company-name {
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+
+        .info-line {
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .label {
+            font-weight: bold;
+        }
+
+        /* Title */
+        .title-section {
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .invoice-title {
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 3px;
+        }
+
+        .invoice-code {
+            font-size: 12px;
+            margin-top: 3px;
+        }
+
+        /* Table */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 13px; /* TĂNG từ 11px → 13px */
+        }
+
+        .items-table th,
+        .items-table td {
+            border: 1px solid #000;
+            padding: 5px 8px; /* TĂNG padding */
+        }
+
+        .items-table th {
+            background: #e0e0e0;
+            font-weight: bold;
+            text-align: left;
+        }
+
+        .items-table .text-center {
+            text-align: center;
+        }
+
+        .items-table .text-right {
+            text-align: right;
+        }
+
+        .product-name {
+            font-weight: bold;
+        }
+
+        .product-note {
+            font-size: 10px;
+            color: #333;
+            font-style: italic;
+        }
+
+        /* Summary */
+        .summary {
+            margin-top: 10px;
+            float: right;
+            width: 350px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 12px;
+        }
+
+        .summary-row.total {
+            border-top: 2px solid #000;
+            font-weight: bold;
+            font-size: 14px;
+            padding-top: 6px;
+            margin-top: 6px;
+        }
+
+        /* Số thành chữ */
+        .amount-in-words {
+            clear: both;
+            margin-top: 15px;
+            padding: 8px;
+            border: 1px solid #000;
+            font-size: 12px;
+            font-style: italic;
+        }
+
+        /* Footer */
+        .footer {
+            clear: both;
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #000;
+        }
+
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+
+        .signature-box {
+            text-align: center;
+            width: 40%;
+            font-size: 11px;
+        }
+
+        .signature-title {
+            font-weight: bold;
+            margin-bottom: 40px;
+        }
+
+        .notes {
+            margin-top: 10px;
+            font-size: 11px;
+            font-style: italic;
+        }
+
+        /* Print Button */
+        .print-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .print-btn:hover {
+            background: #000;
+        }
+    </style>
+</head>
+{% load invoice_filters %}
+<body>
+    <div class="invoice-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="customer-info">
+                <div class="info-line"><span class="label">Khách hàng:</span> {{ hoadon.khachhang.tenkhachhang|default:"Khách lẻ" }}</div>
+                <div class="info-line"><span class="label">ĐT:</span> {{ hoadon.khachhang.sodienthoai|default:"—" }}</div>
+                <div class="info-line"><span class="label">Địa chỉ:</span> {{ hoadon.khachhang.diachi|default:"—" }}</div>
+                <div class="info-line"><span class="label">Ngày:</span> {{ hoadon.ngaytao|date:"d/m/Y H:i" }}</div>
+            </div>
+            
+            <div class="company-info">
+                <div class="company-name">TÊN CÔNG TY</div>
+                <div>123 Đường ABC, Q.XYZ, TP.HCM</div>
+                <div>ĐT: 0123 456 789</div>
+                <div>MST: 0123456789</div>
+            </div>
+        </div>
+
+        <!-- Title -->
+        <div class="title-section">
+            <div class="invoice-title">HÓA ĐƠN BÁN HÀNG</div>
+            <div class="invoice-code">{{ hoadon.mahoadonban }}</div>
+        </div>
+
+        <!-- Items Table -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 4%">#</th>
+                    <th style="width: 42%">Sản phẩm</th>
+                    <th class="text-center" style="width: 8%">ĐVT</th>
+                    <th class="text-center" style="width: 8%">SL</th>
+                    <th class="text-right" style="width: 16%">Đơn giá</th>
+                    <th class="text-right" style="width: 22%">Thành tiền</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in chitiet %}
+                <tr>
+                    <td class="text-center">{{ forloop.counter }}</td>
+                    <td>
+                        <span class="product-name">{{ item.tensanpham }}</span>
+                        {% if item.ghichu %}
+                        <div class="product-note">{{ item.ghichu }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">{{ item.donvitinh|default:"—" }}</td>
+                    <td class="text-center">{{ item.soluong|floatformat:0 }}</td>
+                    <td class="text-right">{{ item.dongiaban|floatformat:0|add_commas }}</td>
+                    <td class="text-right">{{ item.thanhtien|floatformat:0|add_commas }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Summary -->
+        <div class="summary">
+            <div class="summary-row">
+                <span>Tạm tính:</span>
+                <span>{{ tam_tinh|floatformat:0|add_commas }} đ</span>
+            </div>
+            {% if hoadon.chietkhauchung > 0 %}
+            <div class="summary-row">
+                <span>Chiết khấu ({{ hoadon.chietkhauchung }}%):</span>
+                <span>-{{ tien_chiet_khau|floatformat:0|add_commas }} đ</span>
+            </div>
+            {% endif %}
+            <div class="summary-row total">
+                <span>TỔNG CỘNG:</span>
+                <span>{{ hoadon.tongtienphaithanhtoan|floatformat:0|add_commas }} đ</span>
+            </div>
+            {% if hoadon.khachhangungtien > 0 %}
+            <div class="summary-row">
+                <span>Khách đã trả:</span>
+                <span>{{ hoadon.khachhangungtien|floatformat:0|add_commas }} đ</span>
+            </div>
+            <div class="summary-row">
+                <span>Còn nợ:</span>
+                <span>{{ con_no|floatformat:0|add_commas }} đ</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Số tiền bằng chữ -->
+        <div class="amount-in-words">
+            <strong>Tổng tiền (bằng chữ):</strong> {{ tien_bang_chu }}
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            {% if hoadon.ghichu %}
+            <div class="notes">Ghi chú: {{ hoadon.ghichu }}</div>
+            {% endif %}
+            
+            <div class="signatures">
+                <div class="signature-box">
+                    <div class="signature-title">Người mua</div>
+                    <div>(Ký, ghi rõ họ tên)</div>
+                </div>
+                <div class="signature-box">
+                    <div class="signature-title">Người bán</div>
+                    <div>(Ký, ghi rõ họ tên)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Button -->
+    <button class="print-btn no-print" onclick="window.print()">IN HÓA ĐƠN</button>
+</body>
+</html>

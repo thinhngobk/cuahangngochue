@@ -1,0 +1,335 @@
+{% load humanize %}
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+    .select2-container--default .select2-selection--single {
+        border-radius: 0.75rem !important;
+        border: 2px solid #cbd5e1 !important;
+        height: 48px !important;
+        display: flex;
+        align-items: center;
+    }
+
+    .editable-focus:focus {
+        background-color: #f0fdf4 !important;
+        border-left: 4px solid #059669 !important;
+        outline: none;
+    }
+
+    .note-cell {
+        min-height: 40px;
+        min-width: 150px;
+    }
+
+    .saving {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+</style>
+
+<div class="max-w-[95%] mx-auto py-6 font-sans text-slate-950">
+    <!-- Header -->
+    <div class="bg-white p-6 rounded-[2rem] shadow-md border-2 border-slate-100 mb-6">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <div class="flex items-center gap-4">
+                <a href="{% url 'pos' %}"
+                    class="group flex items-center justify-center w-12 h-12 bg-white border-2 border-slate-200 rounded-2xl hover:bg-slate-900 transition-all shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-600 group-hover:text-white"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                </a>
+                <div>
+                    <h1 class="text-4xl font-black text-slate-900 tracking-tighter uppercase">Sổ Cái <span class="text-emerald-700">Công Nợ</span></h1>
+                    <p class="text-[12px] font-black text-slate-600 uppercase tracking-widest mt-1">Lịch sử giao dịch chi tiết</p>
+                </div>
+            </div>
+
+            <form method="GET" class="flex flex-wrap items-end gap-3 w-full lg:w-auto">
+                <div class="flex-1 min-w-[300px]">
+                    <label class="block text-[11px] font-black text-slate-700 uppercase ml-2 mb-1">Khách hàng:</label>
+                    <select name="khach_hang_id" id="khach_hang_search" class="w-full">
+                        <option value="">-- Chọn khách hàng --</option>
+                        {% for kh in danh_sach_khach_hang %}
+                        <option value="{{ kh.id }}" {% if kh.id|stringformat:"s" == kh_id_selected %}selected{% endif %}>
+                            {{ kh.tenkhachhang }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="w-full sm:w-auto">
+                    <label class="block text-[11px] font-black text-slate-700 uppercase ml-2 mb-1">Từ ngày:</label>
+                    <input type="date" name="tu_ngay" value="{{ tu_ngay }}"
+                        class="w-full p-2.5 border-2 border-slate-200 rounded-xl font-extrabold text-sm outline-none focus:border-emerald-500">
+                </div>
+                <div class="w-full sm:w-auto">
+                    <label class="block text-[11px] font-black text-slate-700 uppercase ml-2 mb-1">Đến ngày:</label>
+                    <input type="date" name="den_ngay" value="{{ den_ngay }}"
+                        class="w-full p-2.5 border-2 border-slate-200 rounded-xl font-extrabold text-sm outline-none focus:border-emerald-500">
+                </div>
+                <button type="submit"
+                    class="p-3 px-8 bg-slate-900 text-white rounded-xl font-black uppercase text-[12px] hover:bg-emerald-700 transition-all shadow-md">Lọc</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ✅ THẺ ĐỐI CHIẾU (hiển thị đầu tiên, nổi bật) -->
+    {% if audit %}
+    <div class="mb-6">
+        {% if audit.khop %}
+        <div class="bg-emerald-50 border-l-4 border-emerald-600 rounded-xl p-5 shadow-sm">
+            <div class="flex items-start gap-4">
+                <div class="flex-shrink-0">
+                    <svg class="w-10 h-10 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-black text-emerald-800 mb-3">✅ DỮ LIỆU KHỚP - Sổ cái chính xác</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div class="bg-white rounded-lg p-3 border border-emerald-200">
+                            <p class="text-[10px] font-black text-emerald-600 uppercase mb-1">Sổ cái</p>
+                            <p class="text-xl font-black text-emerald-900">{{ audit.du_no_so_cai|intcomma }}đ</p>
+                        </div>
+                        <div class="bg-white rounded-lg p-3 border border-emerald-200">
+                            <p class="text-[10px] font-black text-emerald-600 uppercase mb-1">Chứng từ</p>
+                            <p class="text-xl font-black text-emerald-900">{{ audit.du_no_chung_tu|intcomma }}đ</p>
+                        </div>
+                        <div class="bg-emerald-600 rounded-lg p-3 flex items-center justify-center">
+                            <p class="text-sm font-black text-white">CHÊNH LỆCH: 0đ</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="bg-red-50 border-l-4 border-red-600 rounded-xl p-5 shadow-sm">
+            <div class="flex items-start gap-4">
+                <div class="flex-shrink-0">
+                    <svg class="w-10 h-10 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-black text-red-800 mb-3">❌ PHÁT HIỆN SAI LỆCH</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="bg-white rounded-lg p-3 border-2 border-red-200">
+                            <p class="text-[10px] font-black text-red-600 uppercase mb-1">Sổ cái</p>
+                            <p class="text-xl font-black text-red-900">{{ audit.du_no_so_cai|intcomma }}đ</p>
+                        </div>
+                        <div class="bg-white rounded-lg p-3 border-2 border-red-200">
+                            <p class="text-[10px] font-black text-red-600 uppercase mb-1">Chứng từ (đúng)</p>
+                            <p class="text-xl font-black text-red-900">{{ audit.du_no_chung_tu|intcomma }}đ</p>
+                        </div>
+                        <div class="bg-red-600 rounded-lg p-3 flex items-center justify-center">
+                            <div class="text-center">
+                                <p class="text-[10px] font-black text-red-200 uppercase">Chênh lệch</p>
+                                <p class="text-lg font-black text-white">
+                                    {% if audit.chenh_lech > 0 %}+{% endif %}{{ audit.chenh_lech|intcomma }}đ
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg p-4 border-2 border-red-200">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <p class="text-xs font-black text-red-700 mb-2 uppercase">📊 Chi tiết tính toán:</p>
+                                <div class="space-y-1 text-xs font-bold text-slate-700">
+                                    <div class="flex justify-between">
+                                        <span>Nợ đầu kỳ:</span>
+                                        <span>{{ audit.no_dau_ky|intcomma }}đ</span>
+                                    </div>
+                                    <div class="flex justify-between text-rose-700">
+                                        <span>+ Tổng hóa đơn:</span>
+                                        <span>{{ audit.tong_hd|intcomma }}đ</span>
+                                    </div>
+                                    <div class="flex justify-between text-emerald-700">
+                                        <span>- Tổng phiếu thu:</span>
+                                        <span>{{ audit.tong_pt|intcomma }}đ</span>
+                                    </div>
+                                    <div class="flex justify-between text-emerald-700">
+                                        <span>- Tổng hoàn hàng:</span>
+                                        <span>{{ audit.tong_hh|intcomma }}đ</span>
+                                    </div>
+                                    <div class="flex justify-between font-black text-base border-t-2 border-slate-300 pt-2 mt-2">
+                                        <span>= Dư nợ đúng:</span>
+                                        <span>{{ audit.du_no_chung_tu|intcomma }}đ</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <p class="text-xs font-black text-red-700 mb-2 uppercase">💡 Nguyên nhân có thể:</p>
+                                <ul class="text-xs text-slate-700 space-y-1">
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-red-600">•</span>
+                                        <span>Hóa đơn/phiếu thu chưa ghi sổ</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-red-600">•</span>
+                                        <span>Ghi sổ trùng lặp (1 chứng từ ghi 2 lần)</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-red-600">•</span>
+                                        <span>Sửa thủ công dữ liệu sổ cái</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-red-600">•</span>
+                                        <span>Signal không chạy khi duyệt</span>
+                                    </li>
+                                </ul>
+                                
+                                <div class="mt-3 pt-3 border-t border-red-200">
+                                    <p class="text-xs font-black text-red-700">
+                                        {% if audit.chenh_lech > 0 %}
+                                        ⚠️ Sổ cái đang GHI THỪA {{ audit.chenh_lech|intcomma }}đ
+                                        {% else %}
+                                        ⚠️ Sổ cái đang GHI THIẾU (số âm cho thấy thiếu)
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Bảng thống kê 4 ô -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-5 rounded-2xl border-2 border-slate-100 shadow-sm">
+            <p class="text-[10px] font-black text-slate-500 uppercase">Dư nợ đầu kỳ</p>
+            <p class="text-2xl font-black text-slate-900">{{ du_no_dau_ky|default:0|intcomma }}</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border-2 border-slate-100 border-l-rose-500 shadow-sm">
+            <p class="text-[10px] font-black text-rose-500 uppercase">Tổng Tăng</p>
+            <p class="text-2xl font-black text-rose-700">+{{ tong_tang|default:0|intcomma }}</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border-2 border-slate-100 border-l-emerald-500 shadow-sm">
+            <p class="text-[10px] font-black text-emerald-500 uppercase">Tổng Giảm</p>
+            <p class="text-2xl font-black text-emerald-700">-{{ tong_giam|default:0|intcomma }}</p>
+        </div>
+        <div class="bg-slate-900 p-5 rounded-2xl shadow-lg border-l-4 border-l-emerald-500">
+            <p class="text-[10px] font-black text-slate-400 uppercase">Dư nợ cuối kỳ</p>
+            <p class="text-2xl font-black text-white">{{ du_no_cuoi_ky|default:0|intcomma }}</p>
+        </div>
+    </div>
+
+    <!-- Bảng chi tiết -->
+    <div class="bg-white rounded-[2rem] shadow-md border-2 border-slate-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-900 text-[11px] font-black text-white uppercase tracking-widest">
+                        <th class="p-5">Ngày</th>
+                        <th class="p-5">Mã CT</th>
+                        <th class="p-5">Khách hàng</th>
+                        <th class="p-5">Diễn giải</th>
+                        <th class="p-5 text-right">Tăng</th>
+                        <th class="p-5 text-right">Giảm</th>
+                        <th class="p-5 text-right bg-slate-800">Dư nợ</th>
+                        <th class="p-5">Ghi chú</th>
+                    </tr>
+                </thead>
+                <tbody class="text-[14px] font-extrabold">
+                    {% for item in so_cai_list %}
+                    <tr class="border-b border-slate-100 hover:bg-slate-50 transition-all">
+                        <td class="p-5 text-slate-500">{{ item.ngay_ghi_so|date:"d/m/Y" }}</td>
+                        <td class="p-5">
+                            <div class="flex flex-col items-start gap-1">
+                                <span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md text-[11px] font-black border border-slate-200">
+                                    {{ item.ma_chung_tu|default:"-" }}
+                                </span>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase pl-1">
+                                    {% if item.user %}
+                                    {{ item.user.first_name|default:item.user.username }}
+                                    {% else %}
+                                    Hệ thống
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </td>
+                        <td class="p-5">{{ item.khachhang.tenkhachhang }}</td>
+                        <td class="p-5 whitespace-normal break-words max-w-[250px] font-medium text-slate-600">
+                            {{ item.dien_giai }}
+                        </td>
+                        <td class="p-5 text-right text-rose-700">
+                            {% if item.tang > 0 %}{{ item.tang|intcomma }}{% else %}-{% endif %}
+                        </td>
+                        <td class="p-5 text-right text-emerald-700">
+                            {% if item.giam > 0 %}{{ item.giam|intcomma }}{% else %}-{% endif %}
+                        </td>
+                        <td class="p-5 text-right bg-slate-50 text-base text-slate-950">
+                            {{ item.du_no_tuc_thoi|intcomma }}
+                        </td>
+                        <td class="p-5 text-[13px] italic text-slate-700 note-cell editable-focus"
+                            contenteditable="true" data-id="{{ item.id }}" onblur="updateGhiChu(this)"
+                            onkeydown="if(event.keyCode==13){event.preventDefault(); this.blur();}" spellcheck="false">
+                            {{ item.ghichu|default:"" }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="p-20 text-center text-slate-400 font-black uppercase tracking-widest">
+                            DỮ LIỆU TRỐNG
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+    $(document).ready(function () {
+        // Khởi tạo tìm kiếm khách hàng
+        $('#khach_hang_search').select2({
+            width: '100%',
+            placeholder: "-- Chọn khách hàng --",
+            allowClear: true
+        });
+    });
+
+    // Hàm cập nhật ghi chú qua AJAX
+    function updateGhiChu(element) {
+        const id = element.getAttribute('data-id');
+        const noiDung = element.innerText.trim();
+
+        // Thêm hiệu ứng đang lưu
+        element.classList.add('saving');
+
+        fetch('/update-ghi-chu-so-cai/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ 'id': id, 'ghi_chu': noiDung })
+        })
+            .then(response => response.json())
+            .then(data => {
+                element.classList.remove('saving');
+                if (data.status === 'success') {
+                    // Hiệu ứng xanh nhẹ khi lưu thành công
+                    element.classList.add('bg-emerald-100');
+                    setTimeout(() => element.classList.remove('bg-emerald-100'), 500);
+                } else {
+                    alert('Lỗi: ' + (data.message || 'Không thể lưu ghi chú'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                element.classList.remove('saving');
+                alert('Lỗi kết nối máy chủ!');
+            });
+    }
+</script>

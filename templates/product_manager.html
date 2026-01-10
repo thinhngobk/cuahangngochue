@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản Lý Sản Phẩm | Gemini POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        [x-cloak] { display: none !important; }
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen" x-data="productManager()" x-cloak>
+    {% csrf_token %}
+
+    <!-- NAVIGATION -->
+    <nav class="bg-gradient-to-r from-blue-600 to-indigo-600 border-b border-blue-700 p-4 shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <h1 class="text-2xl font-black text-white tracking-tight">📦 QUẢN LÝ SẢN PHẨM</h1>
+                <a href="/" class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold text-xs uppercase transition-all">
+                    ← Trang chủ
+                </a>
+                <a href="/pos/" class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold text-xs uppercase transition-all">
+                    POS
+                </a>
+            </div>
+            <div class="text-white text-sm font-semibold">
+                Tổng: <span class="font-black text-lg" x-text="products.length"></span> sản phẩm
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <div class="max-w-7xl mx-auto p-6 space-y-6">
+        
+        <!-- SEARCH & FILTER BAR -->
+        <div class="bg-white rounded-2xl shadow-lg border-2 border-blue-200 p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">🔍 Tìm kiếm</label>
+                    <input type="text" x-model="searchQuery" 
+                        class="w-full px-4 py-3 border-2 border-blue-100 rounded-xl focus:border-blue-500 outline-none font-semibold"
+                        placeholder="Tên sản phẩm, mã, barcode...">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">📊 Trạng thái</label>
+                    <select x-model="filterStatus" class="w-full px-4 py-3 border-2 border-blue-100 rounded-xl focus:border-blue-500 outline-none font-semibold">
+                        <option value="all">Tất cả</option>
+                        <option value="active">Đang bán</option>
+                        <option value="inactive">Ngừng bán</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button @click="showAddModal = true" 
+                        class="w-full px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 uppercase text-sm">
+                        ➕ Thêm mới
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRODUCTS TABLE -->
+        <div class="bg-white rounded-2xl shadow-lg border-2 border-blue-200 overflow-hidden">
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full">
+                    <thead class="bg-gradient-to-r from-slate-800 to-blue-900 text-white">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-black uppercase tracking-wider">
+                                <div class="flex items-center gap-2">
+                                    🏷️ Mã SP
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-black uppercase tracking-wider">
+                                <div class="flex items-center gap-2">
+                                    📦 Tên sản phẩm
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-black uppercase tracking-wider">
+                                <div class="flex items-center justify-center gap-2">
+                                    📏 ĐVT
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-right text-xs font-black uppercase tracking-wider">
+                                <div class="flex items-center justify-end gap-2">
+                                    💰 Giá bán
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-black uppercase tracking-wider">
+                                <div class="flex items-center justify-center gap-2">
+                                    📊 Tồn kho
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-black uppercase tracking-wider">
+                                <div class="flex items-center justify-center gap-2">
+                                    🎯 Trạng thái
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-black uppercase tracking-wider">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        <template x-for="(product, index) in filteredProducts" :key="product.id">
+                            <tr class="hover:bg-blue-50 transition-colors duration-150">
+                                <td class="px-6 py-4">
+                                    <div class="font-bold text-blue-600" x-text="product.ma"></div>
+                                    <div class="text-xs text-slate-400" x-text="product.barcode || '-'"></div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="font-bold text-slate-800" x-text="product.ten"></div>
+                                    <div class="text-xs text-slate-400" x-text="product.ghichu || '-'"></div>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold" x-text="product.donvi"></span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="font-black text-emerald-600 text-lg" x-text="formatVND(product.gia_ban)"></div>
+                                    <div class="text-xs text-slate-400">Gốc: <span x-text="formatVND(product.gia_goc)"></span></div>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="text-2xl font-black" 
+                                          :class="product.ton_kho > 0 ? 'text-green-600' : 'text-red-600'"
+                                          x-text="product.ton_kho"></span>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="px-4 py-2 rounded-full text-xs font-black uppercase"
+                                          :class="product.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                                          x-text="product.is_active ? 'Đang bán' : 'Ngừng bán'"></span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <button @click="editProduct(product)" 
+                                            class="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all hover:scale-110" title="Sửa">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+                                        <button @click="toggleStatus(product)" 
+                                            class="p-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all hover:scale-110" 
+                                            :title="product.is_active ? 'Ngừng bán' : 'Kích hoạt'">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                
+                <template x-if="filteredProducts.length === 0">
+                    <div class="p-24 text-center">
+                        <div class="text-6xl mb-4">📦</div>
+                        <div class="text-xl font-bold text-slate-400">Không tìm thấy sản phẩm</div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD/EDIT PRODUCT -->
+    <div x-show="showAddModal" @click.self="showAddModal = false"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-t-3xl">
+                <h3 class="text-2xl font-black" x-text="editingProduct ? '✏️ SỬA SẢN PHẨM' : '➕ THÊM SẢN PHẨM MỚI'"></h3>
+            </div>
+            
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Mã sản phẩm</label>
+                        <input type="text" x-model="formData.ma" disabled
+                            class="w-full px-4 py-3 bg-slate-100 border-2 border-slate-200 rounded-xl font-bold text-slate-400"
+                            placeholder="Tự động tạo">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Barcode</label>
+                        <input type="text" x-model="formData.barcode"
+                            class="w-full px-4 py-3 border-2 border-blue-100 rounded-xl focus:border-blue-500 outline-none font-semibold"
+                            placeholder="Mã vạch...">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Tên sản phẩm *</label>
+                    <input type="text" x-model="formData.ten"
+                        class="w-full px-4 py-3 border-2 border-blue-100 rounded-xl focus:border-blue-500 outline-none font-semibold"
+                        placeholder="Nhập tên sản phẩm...">
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Đơn vị tính</label>
+                        <input type="text" x-model="formData.donvi"
+                            class="w-full px-4 py-3 border-2 border-blue-100 rounded-xl focus:border-blue-500 outline-none font-semibold"
+                            placeholder="Cái, Bộ...">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Giá gốc</label>
+                        <input type="text" x-model="formData.gia_goc"
+                            class="w-full px-4 py-3 border-2 border-blue-100 rounded-xl focus:border-blue-500 outline-none font-semibold text-right"
+                            placeholder="0">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Giá bán *</label>
+                        <input type="text" x-model="formData.gia_ban"
+                            class="w-full px-4 py-3 border-2 border-blue-100 rounded-xl focus:border-blue-500 outline-none font-semibold text-right"
+                            placeholder="0">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Tồn kho</label>
+                        <input type="number" x-model="formData.ton_kho"
+                            class="w-full px-4 py-3 border-2 border-blue-100 rounded-xl focus:border-blue-500 outline-none font-semibold text-right"
+                            placeholder="0">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Trạng thái</label>
+                        <select x-model="formData.is_active"
+                            class="w-full px-4 py-3 border-2 border-blue-100 rounded-xl focus:border-blue-500 outline-none font-semibold">
+                            <option :value="true">Đang bán</option>
+                            <option :value="false">Ngừng bán</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Ghi chú</label>
+                    <textarea x-model="formData.ghichu" rows="3"
+                        class="w-full px-4 py-3 border-2 border-blue-100 rounded-xl focus:border-blue-500 outline-none font-medium"
+                        placeholder="Thông tin thêm..."></textarea>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button @click="saveProduct"
+                        class="flex-1 px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-all uppercase">
+                        💾 Lưu lại
+                    </button>
+                    <button @click="showAddModal = false"
+                        class="px-6 py-4 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-all uppercase">
+                        Hủy
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function formatVND(value) {
+            if (!value && value !== 0) return '0';
+            return new Intl.NumberFormat('vi-VN').format(value);
+        }
+
+        function productManager() {
+            return {
+                products: [],
+                searchQuery: '',
+                filterStatus: 'all',
+                showAddModal: false,
+                editingProduct: null,
+                formData: {
+                    ma: '',
+                    barcode: '',
+                    ten: '',
+                    donvi: 'Cái',
+                    gia_goc: 0,
+                    gia_ban: 0,
+                    ton_kho: 0,
+                    is_active: true,
+                    ghichu: ''
+                },
+
+                init() {
+                    this.loadProducts();
+                },
+
+                get filteredProducts() {
+                    return this.products.filter(p => {
+                        const matchSearch = !this.searchQuery || 
+                            p.ten.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                            p.ma.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                            (p.barcode && p.barcode.toLowerCase().includes(this.searchQuery.toLowerCase()));
+                        
+                        const matchStatus = this.filterStatus === 'all' || 
+                            (this.filterStatus === 'active' && p.is_active) ||
+                            (this.filterStatus === 'inactive' && !p.is_active);
+                        
+                        return matchSearch && matchStatus;
+                    });
+                },
+
+                async loadProducts() {
+                    try {
+                        const res = await fetch('/api/get-products/');
+                        const data = await res.json();
+                        this.products = data;
+                    } catch (e) {
+                        alert('Lỗi tải dữ liệu: ' + e);
+                    }
+                },
+
+                editProduct(product) {
+                    this.editingProduct = product;
+                    this.formData = { ...product };
+                    this.showAddModal = true;
+                },
+
+                async saveProduct() {
+                    if (!this.formData.ten) {
+                        return alert('Vui lòng nhập tên sản phẩm!');
+                    }
+
+                    try {
+                        const url = this.editingProduct ? `/api/update-product/${this.editingProduct.id}/` : '/api/add-product/';
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': this.getCSRFToken()
+                            },
+                            body: JSON.stringify(this.formData)
+                        });
+                        
+                        const result = await res.json();
+                        if (result.status === 'success') {
+                            alert(this.editingProduct ? 'Cập nhật thành công!' : 'Thêm mới thành công!');
+                            this.showAddModal = false;
+                            this.editingProduct = null;
+                            this.resetForm();
+                            this.loadProducts();
+                        } else {
+                            alert('Lỗi: ' + result.message);
+                        }
+                    } catch (e) {
+                        alert('Lỗi: ' + e);
+                    }
+                },
+
+                async toggleStatus(product) {
+                    if (!confirm(`${product.is_active ? 'Ngừng bán' : 'Kích hoạt'} sản phẩm "${product.ten}"?`)) return;
+                    
+                    try {
+                        const res = await fetch(`/api/toggle-product-status/${product.id}/`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': this.getCSRFToken()
+                            }
+                        });
+                        const result = await res.json();
+                        if (result.status === 'success') {
+                            this.loadProducts();
+                        }
+                    } catch (e) {
+                        alert('Lỗi: ' + e);
+                    }
+                },
+
+                resetForm() {
+                    this.formData = {
+                        ma: '',
+                        barcode: '',
+                        ten: '',
+                        donvi: 'Cái',
+                        gia_goc: 0,
+                        gia_ban: 0,
+                        ton_kho: 0,
+                        is_active: true,
+                        ghichu: ''
+                    };
+                },
+
+                getCSRFToken() {
+                    return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                        document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+                },
+
+                formatVND
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Hệ thống Hoàn Hàng | Gemini POS</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
+        .font-inter-num {
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.02em !important;
+        }
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100" x-data="posHoanSystem()" x-cloak>
+    {% csrf_token %}
+
+    <nav class="bg-gradient-to-r from-rose-600 to-pink-600 border-b border-rose-700 p-4 mb-4 shadow-lg">
+        <div class="max-w-[98%] mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <h1 class="text-2xl font-black text-white tracking-tighter">
+                    <span class="opacity-90">GEMINI</span> HOÀN HÀNG
+                </h1>
+
+                <a href="/"
+                    class="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-2xl font-black text-xs uppercase transition-all duration-300 backdrop-blur-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                        </path>
+                    </svg>
+                    Trang Chủ
+                </a>
+
+                <a href="/pos/"
+                    class="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-2xl font-black text-xs uppercase transition-all duration-300 backdrop-blur-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z">
+                        </path>
+                    </svg>
+                    POS Bán Hàng
+                </a>
+
+                <a href="/hoa-don-hoan/"
+                    class="flex items-center gap-2 px-4 py-2 bg-white/90 hover:bg-white text-rose-700 rounded-2xl font-black text-xs uppercase transition-all duration-300 shadow-md">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+                        </path>
+                    </svg>
+                    Lịch Sử Hoàn Hàng
+                </a>
+
+                <a href="{% url 'danh_sach_phieu_thu' %}"
+                    class="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-2xl font-black text-xs uppercase transition-all duration-300 backdrop-blur-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z">
+                        </path>
+                    </svg>
+                    Lập Phiếu Thu
+                </a>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-bold text-white/80" x-text="today"></span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-[99%] mx-auto p-3 grid grid-cols-12 gap-4 h-[calc(100vh-100px)] overflow-hidden">
+        <div class="col-span-12 lg:col-span-9 space-y-3 h-full overflow-y-auto pr-2">
+            <div class="relative bg-white p-3 rounded-2xl shadow-sm border border-rose-200">
+                <!-- Search & Quantity Row -->
+                <div class="flex gap-3">
+                    <!-- Search Input -->
+                    <div class="relative flex-1">
+                        <input type="text" id="search-input" x-model="searchProdQuery"
+                            class="w-full p-4 border-2 border-blue-100 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:outline-none text-xl font-bold transition-all placeholder:text-slate-300"
+                            placeholder="F2: Tìm tên sản phẩm (≥3 ký tự)..." hx-get="/search-sp/"
+                            hx-trigger="keyup[target.value.length >= 3] changed delay:200ms" hx-target="#search-results"
+                            name="q" autocomplete="off">
+                        <div id="search-results" x-show="searchProdQuery.length >= 3"
+                            class="absolute w-full left-0 z-50 bg-white border shadow-2xl rounded-b-2xl mt-2 max-h-96 overflow-y-auto"
+                            @click.away="searchProdQuery = ''"></div>
+                    </div>
+
+                    <!-- Quantity Input -->
+                    <div class="w-40">
+                        <input type="number" x-ref="qtyInput" x-model.number="selectedQty"
+                            class="w-full p-4 border-2 border-emerald-100 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:outline-none text-xl font-bold text-center transition-all"
+                            placeholder="SL" min="1" step="1" @keydown.enter.prevent="addToCart()"
+                            @focus="$event.target.select()">
+                    </div>
+
+                    <!-- Add Button -->
+                    <button @click="addToCart()" :disabled="!selectedProduct"
+                        :class="selectedProduct ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-300 cursor-not-allowed'"
+                        class="px-6 py-4 text-white rounded-xl font-bold text-lg transition-all shadow-sm flex items-center gap-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        <span>Thêm</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-rose-200 overflow-hidden">
+                <table class="w-full text-left border-collapse table-fixed">
+                    <thead class="bg-rose-50 uppercase text-[11px] font-black text-rose-600 border-b tracking-widest">
+                        <tr>
+                            <th class="p-4 w-12 text-center">STT</th>
+                            <th class="p-4 w-2/5">Sản phẩm hoàn / Ghi chú</th>
+                            <th class="p-4 w-32 text-center">SL</th>
+                            <th class="p-4 w-40 text-right">Đơn giá</th>
+                            <th class="p-4 w-20 text-center">CK%</th>
+                            <th class="p-4 w-44 text-right">Thành tiền</th>
+                            <th class="p-4 w-12 text-center"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-base font-medium">
+                        <template x-for="(item, index) in cart" :key="item.id">
+                            <tr class="border-b hover:bg-rose-50/50 transition-colors">
+                                <td class="p-4 text-center text-slate-300 font-bold text-xs" x-text="index + 1"></td>
+                                <td class="p-4">
+                                    <div class="font-bold text-slate-800 text-base leading-tight mb-1"
+                                        x-text="item.ten"></div>
+                                    <div class="flex items-center space-x-2">
+                                        <span
+                                            class="text-[9px] bg-rose-100 px-1.5 py-0.5 rounded text-rose-600 font-black uppercase tracking-wider border border-rose-200"
+                                            x-text="item.donvi"></span>
+                                        <input type="text"
+                                            class="text-xs border-b border-dotted border-rose-200 focus:outline-none w-full text-slate-400 italic bg-transparent py-0.5"
+                                            placeholder="Ghi chú SP..." x-model="item.ghichu_sp">
+                                    </div>
+                                </td>
+                                <td class="p-3 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <button
+                                            @click="item.soluong = Math.max(0, parseFloat((parseFloat(item.soluong || 0) - 1).toFixed(2))); calculate()"
+                                            class="w-8 h-10 bg-rose-50 hover:bg-rose-200 text-rose-600 rounded-l-lg font-bold border-y-2 border-l-2 border-rose-100">−</button>
+                                        <input type="text"
+                                            class="w-16 h-10 border-2 border-rose-100 text-center text-xl text-slate-900 outline-none font-inter-num bg-white focus:border-rose-500"
+                                            :value="formatNumber(item.soluong)"
+                                            @input="item.soluong = parseNumber($event.target.value); calculate()"
+                                            @focus="$event.target.select()">
+                                        <button
+                                            @click="item.soluong = parseFloat((parseFloat(item.soluong || 0) + 1).toFixed(2)); calculate()"
+                                            class="w-8 h-10 bg-rose-50 hover:bg-rose-200 text-rose-600 rounded-r-lg font-bold border-y-2 border-r-2 border-rose-100">+</button>
+                                    </div>
+                                </td>
+                                <td class="p-3">
+                                    <input type="text"
+                                        class="w-full border-2 border-rose-100 rounded-lg p-1.5 text-right text-xl text-rose-700 outline-none font-inter-num bg-white focus:border-rose-500"
+                                        :value="formatNumber(item.gia)"
+                                        @input="item.gia = parseNumber($event.target.value); calculate()"
+                                        @focus="$event.target.select()">
+                                </td>
+                                <td class="p-3">
+                                    <div class="relative">
+                                        <input type="text"
+                                            class="w-full border-2 border-rose-100 rounded-lg p-1.5 text-center text-xl text-red-500 outline-none font-inter-num bg-white focus:border-red-400"
+                                            :value="formatNumber(item.ck_item)"
+                                            @input="item.ck_item = parseNumber($event.target.value); calculate()"
+                                            @focus="$event.target.select()">
+                                        <span
+                                            class="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-bold text-red-300 pointer-events-none">%</span>
+                                    </div>
+                                </td>
+                                <td class="p-4 text-right text-xl text-rose-900 font-inter-num tracking-tight"
+                                    x-text="formatVND((item.soluong * item.gia) * (1 - (item.ck_item || 0) / 100))">
+                                </td>
+                                <td class="p-4 text-center">
+                                    <button @click="removeItem(index)"
+                                        class="text-slate-200 hover:text-red-500 transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <template x-if="cart.length === 0">
+                    <div class="p-24 text-center text-rose-200 uppercase font-black tracking-[0.2em] text-sm">
+                        Chưa có sản phẩm hoàn
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <div class="col-span-12 lg:col-span-3 h-[calc(100vh-80px)] sticky top-2">
+            <div class="flex items-center justify-between mb-3 border-b pb-3 shrink-0">
+                <h2 class="text-lg font-black uppercase text-blue-800 tracking-tighter">
+                    HOÀN HÀNG
+                </h2>
+                <input type="date" x-model="ngayLap"
+                    class="px-3 py-1.5 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:outline-none font-semibold text-sm">
+            </div>
+
+            <div class="flex-1 overflow-y-auto pr-1 space-y-3">
+                <div class="mb-4" x-data="{ open: false }">
+                    <label class="block text-[11px] font-black text-slate-400 uppercase mb-2 tracking-widest">Khách
+                        hàng</label>
+                    <div class="relative flex items-center">
+                        <input type="text"
+                            class="w-full p-4 pr-10 border-2 border-rose-50 rounded-2xl bg-rose-50 text-base font-bold shadow-sm focus:border-rose-500 outline-none transition-all"
+                            placeholder="Gõ tên hoặc SĐT..." x-model="searchCust" @click="open = true"
+                            @click.away="open = false" @input="if(searchCust === '') khachhang_id = ''">
+
+                        <button x-show="searchCust.length > 0" @click="searchCust = ''; khachhang_id = ''; open = true"
+                            type="button"
+                            class="absolute right-3 p-1 text-slate-400 hover:text-rose-500 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20"
+                                fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+
+                        <div x-show="open && searchCust.length > 0"
+                            class="absolute top-full z-[60] w-full bg-white border shadow-2xl rounded-2xl mt-1 max-h-60 overflow-y-auto">
+                            <template
+                                x-for="kh in customers.filter(c => (c.ten + c.sdt).toLowerCase().includes(searchCust.toLowerCase()))"
+                                :key="kh.id">
+                                <div @click="khachhang_id = kh.id; searchCust = kh.ten; open = false"
+                                    class="p-4 hover:bg-rose-50 cursor-pointer border-b last:border-0 flex justify-between items-center text-sm font-bold">
+                                    <span x-text="kh.ten"></span>
+                                    <span class="text-xs text-slate-400" x-text="kh.sdt"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Lý do
+                        hoàn</label>
+                    <textarea x-model="ghichu_don"
+                        class="w-full p-2 bg-rose-50 border-2 border-rose-50 rounded-xl text-xs font-medium outline-none"
+                        rows="2" placeholder="Hàng lỗi, sai màu..."></textarea>
+                </div>
+
+                <div class="py-2 border-y border-dashed border-rose-100 space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-400 font-bold uppercase">Tiền hàng</span>
+                        <span class="font-bold text-slate-900" x-text="formatVND(subtotal)"></span>
+                    </div>
+                </div>
+
+                <div class="text-center py-2 bg-rose-50 rounded-2xl">
+                    <div class="text-[10px] text-rose-400 uppercase font-black">Tổng tiền hoàn</div>
+                    <div class="text-2xl font-black text-rose-600 tracking-tighter" x-text="formatVND(finalTotal)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-3 space-y-2 shrink-0 bg-white border-t border-dashed mt-2">
+                <button @click="saveInvoiceAction(false)"
+                    class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 rounded-xl text-[12px] uppercase tracking-wider transition-all">
+                    Lưu nháp
+                </button>
+                <button @click="saveInvoiceAction(true)"
+                    class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-5 rounded-xl shadow-md text-[12px] uppercase tracking-wider transition-all">
+                    Lưu & Duyệt
+                </button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+
+</body>
+<script id="customers-data" type="application/json">
+    [
+        {% for kh in khach_hangs %}
+        {
+            "id": "{{ kh.id }}",
+            "ten": "{{ kh.tenkhachhang|escapejs }}",
+            "sdt": "{{ kh.sdt|default:''|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ]
+    </script>
+
+<script>
+    window.formatVND = function (value) {
+        if (value === null || value === undefined) return '0';
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        }).format(value);
+    };
+
+    window.parseNumber = function (str) {
+        if (!str) return 0;
+        return parseFloat(str.toString().replace(/,/g, '')) || 0;
+    };
+
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('posHoanSystem', () => ({
+            today: new Date().toLocaleDateString('vi-VN'),
+            cart: [],
+            customers: JSON.parse(document.getElementById('customers-data').textContent || '[]'),
+            ngayLap: new Date().toISOString().split('T')[0],
+            khachhang_id: "",
+            searchProdQuery: "",
+            searchCust: "",
+            chietkhau_tong: 0,
+            ghichu_don: "",
+            subtotal: 0,
+            finalTotal: 0,
+            selectedQty: 1,           // ← THÊM DÒNG NÀY
+            selectedProduct: null,
+            editMode: false,           // ✅ THÊM
+            editInvoiceId: null,       // ✅ THÊM
+            init() {
+                window.addItemToCart = (product) => this.addItem(product);
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const editMa = urlParams.get('edit');
+
+                // ✅ XỬ LÝ EDIT
+                if (editMa) {
+                    this.editMode = true;
+                    fetch(`/api/invoice-hoan-detail/${editMa}/`)
+                        .then(r => r.json())
+                        .then(d => {
+                            if (d.status === 'success') {
+                                this.editInvoiceId = d.data.id;
+                                this.khachhang_id = d.data.khachhang_id || '';
+                                this.ghichu_don = d.data.ghichu || '';
+                                this.cart = d.data.items || [];
+                                this.calculate();
+                                console.log('Loaded cart:', this.cart);  // ✅ DEBUG
+                                alert(`Đang chỉnh sửa đơn ${d.data.ma_hd}`);
+                            }
+                        })
+                        .catch(err => alert('Lỗi: ' + err));
+                    return;  // ✅ QUAN TRỌNG - dừng không chạy copy
+                }
+
+                // ✅ SAO CHÉP
+                const copyId = urlParams.get('copy');
+                if (copyId) {
+                    fetch(`/api/copy-invoice-hoan/${copyId}/`)
+                        .then(r => r.json())
+                        .then(d => {
+                            if (d.status === 'success') {
+                                this.cart = d.data.items;
+                                this.khachhang_id = d.data.khachhang_id;
+                                this.ghichu_don = d.data.ghichu_don;
+                                this.calculate();
+                                alert(`Đã sao chép từ ${d.data.ma_goc}`);
+                            }
+                        });
+                }
+            },
+
+            addItem(product) {
+                const qty = parseFloat(this.selectedQty) || 1;  // ← THÊM
+
+                let existingItem = this.cart.find(item => item.id === product.id);
+                if (existingItem) {
+                    existingItem.soluong = (parseFloat(existingItem.soluong) || 0) + qty;  // ← SỬA
+                } else {
+                    this.cart.push({
+                        id: product.id,
+                        ten: product.ten,
+                        gia: parseFloat(product.gia) || 0,
+                        soluong: qty,  // ← SỬA
+                        ck_item: 0,
+                        donvi: product.donvi || 'Cái',
+                        ghichu_sp: ''
+                    });
+                }
+                this.calculate();
+
+                // Reset
+                this.searchProdQuery = '';
+                this.selectedQty = 1;           // ← THÊM
+                this.selectedProduct = null;    // ← THÊM
+            },
+
+            // ← THÊM HÀM MỚI
+            addToCart() {
+                if (!this.selectedProduct) {
+                    alert('Vui lòng chọn sản phẩm trước');
+                    return;
+                }
+                this.addItem(this.selectedProduct);
+                document.getElementById('search-input')?.focus();
+            },
+
+            removeItem(index) {
+                if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) {
+                    this.cart.splice(index, 1);
+                    this.calculate();
+                }
+            },
+
+            calculate() {
+                let total = 0;
+                this.cart.forEach(item => {
+                    const gia = parseFloat(item.gia) || 0;
+                    const sl = parseFloat(item.soluong) || 0;
+                    const ck_phan_tram = parseFloat(item.ck_item) || 0;
+                    const tien_chiet_khau_item = (gia * sl) * (ck_phan_tram / 100);
+                    item.chietkhau = tien_chiet_khau_item;
+                    total += (gia * sl) - tien_chiet_khau_item;
+                });
+
+                this.subtotal = total;
+                this.finalTotal = Math.round(total);  // ← BỎ CK chung, chỉ làm tròn
+            },
+
+            formatNumber(val) {
+                if (!val && val !== 0) return '';
+                return new Intl.NumberFormat('en-US').format(val);
+            },
+
+            parseNumber(str) {
+                if (!str) return 0;
+                return parseFloat(str.toString().replace(/,/g, '')) || 0;
+            },
+
+            async saveInvoiceAction(shouldApprove) {
+                if (this.cart.length === 0) return alert("Giỏ hàng trống!");
+                if (!this.khachhang_id) return alert("Vui lòng chọn khách hàng!");
+
+                this.calculate();
+
+                const payload = {
+                    khachhang_id: this.khachhang_id,
+                    ghichu_don: this.ghichu_don,
+                    ngay_lap: this.ngayLap,
+                    items: this.cart.map(item => ({
+                        id: item.id,
+                        soluong: item.soluong,
+                        gia: item.gia,
+                        donvi: item.donvi,
+                        ck_item: parseFloat(item.ck_item) || 0,
+                        ghichu_sp: item.ghichu_sp || ''
+                    })),
+                    admin_approve: shouldApprove
+                };
+
+                // ✅ CHỌN API DỰA TRÊN EDIT MODE
+                const url = this.editMode
+                    ? `/api/hoan/edit/${this.editInvoiceId}/`
+                    : '/api/save-invoice-hoan/';
+
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': this.getCSRFToken()
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await res.json();
+                    if (result.status === 'success') {
+                        alert(this.editMode ? "Đã cập nhật đơn hoàn!" : (shouldApprove ? "Đã duyệt và cộng kho thành công!" : "Đã lưu đơn hoàn tạm!"));
+                        window.location.href = '/lich-su-hoan/';  // ✅ REDIRECT về danh sách
+                    } else {
+                        alert("Lỗi: " + result.message);
+                    }
+                } catch (e) {
+                    alert("Lỗi máy chủ không phản hồi!");
+                }
+            },
+
+            getCSRFToken() {
+                return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+            }
+        }));
+    });
+</script>
+
+</html>

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini POS - Hệ Thống Quản Lý Bán Hàng</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .gradient-blue {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        }
+
+        .gradient-rose {
+            background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
+        }
+
+        .gradient-emerald {
+            background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+        }
+
+        .gradient-purple {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+        }
+
+        .gradient-amber {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .gradient-cyan {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-slate-50 to-slate-200 min-h-screen" x-data="dashboard()" x-cloak>
+
+    <!-- HEADER -->
+    <header class="bg-white shadow-lg border-b-4 border-blue-600">
+        <div class="max-w-7xl mx-auto px-6 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-black text-slate-800 tracking-tight">GEMINI POS</h1>
+                        <p class="text-sm text-slate-500 font-bold">Hệ Thống Quản Lý Bán Hàng Toàn Diện</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs font-bold text-slate-400 uppercase">Hôm nay</div>
+                    <div class="text-lg font-black text-slate-700" x-text="today"></div>
+                    <div class="text-xs text-slate-500 font-medium" x-text="currentTime"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="max-w-7xl mx-auto px-6 py-8">
+
+        <!-- WELCOME BANNER -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-8 mb-8 text-white shadow-2xl">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-3xl font-black mb-2">Xin chào! 👋</h2>
+                    <p class="text-blue-100 text-lg font-medium">Chọn chức năng bên dưới để bắt đầu làm việc</p>
+                </div>
+                <div class="hidden md:block">
+                    <svg class="w-32 h-32 opacity-20" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                            d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z">
+                        </path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- MENU CHÍNH -->
+        <div class="mb-8">
+            <h3 class="text-xl font-black text-slate-700 mb-4 uppercase tracking-tight">
+                <span class="border-l-4 border-blue-600 pl-3">Nghiệp Vụ Chính</span>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                <!-- BÁN HÀNG -->
+                <a href="/pos/" class="card-hover">
+                    <div class="gradient-blue rounded-3xl p-8 text-white shadow-xl">
+                        <div class="flex items-start justify-between mb-6">
+                            <div
+                                class="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <span class="text-xs font-black bg-white/20 px-3 py-1 rounded-full uppercase">F1</span>
+                        </div>
+                        <h4 class="text-2xl font-black mb-2">Bán Hàng</h4>
+                        <p class="text-blue-100 font-medium text-sm">Tạo đơn hàng, xuất hóa đơn bán hàng cho khách</p>
+                        <div class="mt-6 flex items-center text-sm font-bold text-white/80">
+                            <span>Vào ngay</span>
+                            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                                </path>
+                            </svg>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- HOÀN HÀNG -->
+                <a href="/pos-hoan/" class="card-hover">
+                    <div class="gradient-rose rounded-3xl p-8 text-white shadow-xl">
+                        <div class="flex items-start justify-between mb-6">
+                            <div
+                                class="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <span class="text-xs font-black bg-white/20 px-3 py-1 rounded-full uppercase">F8</span>
+                        </div>
+                        <h4 class="text-2xl font-black mb-2">Hoàn Hàng</h4>
+                        <p class="text-rose-100 font-medium text-sm">Xử lý trả hàng, hoàn tiền cho khách hàng</p>
+                        <div class="mt-6 flex items-center text-sm font-bold text-white/80">
+                            <span>Vào ngay</span>
+                            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                                </path>
+                            </svg>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- PHIẾU THU -->
+                <a href="{% url 'danh_sach_phieu_thu' %}" class="card-hover">
+                    <div class="gradient-emerald rounded-3xl p-8 text-white shadow-xl">
+                        <div class="flex items-start justify-between mb-6">
+                            <div
+                                class="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <span class="text-xs font-black bg-white/20 px-3 py-1 rounded-full uppercase">F5</span>
+                        </div>
+                        <h4 class="text-2xl font-black mb-2">Phiếu Thu</h4>
+                        <p class="text-emerald-100 font-medium text-sm">Lập phiếu thu tiền nợ từ khách hàng</p>
+                        <div class="mt-6 flex items-center text-sm font-bold text-white/80">
+                            <span>Vào ngay</span>
+                            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                                </path>
+                            </svg>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- QUẢN LÝ & BÁO CÁO -->
+        <div class="mb-8">
+            <h3 class="text-xl font-black text-slate-700 mb-4 uppercase tracking-tight">
+                <span class="border-l-4 border-purple-600 pl-3">Quản Lý & Báo Cáo</span>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                <!-- LỊCH SỬ ĐƠN BÁN -->
+                <a href="/hoa-don/" class="card-hover">
+                    <div class="bg-white rounded-3xl p-6 shadow-lg border-2 border-blue-100 hover:border-blue-300">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-black text-slate-800">Lịch Sử Đơn Bán</h4>
+                                <p class="text-xs text-slate-500 font-medium">Quản lý hóa đơn bán</p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- LỊCH SỬ ĐƠN HOÀN -->
+                <a href="/hoa-don-hoan/" class="card-hover">
+                    <div class="bg-white rounded-3xl p-6 shadow-lg border-2 border-rose-100 hover:border-rose-300">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-rose-100 rounded-xl flex items-center justify-center">
+                                <svg class="w-6 h-6 text-rose-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-black text-slate-800">Lịch Sử Đơn Hoàn</h4>
+                                <p class="text-xs text-slate-500 font-medium">Quản lý hóa đơn hoàn</p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- SỔ CÔNG NỢ -->
+                <a href="{% url 'so_cai_cong_no' %}" class="card-hover">
+                    <div class="bg-white rounded-3xl p-6 shadow-lg border-2 border-purple-100 hover:border-purple-300">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-black text-slate-800">Sổ Công Nợ</h4>
+                                <p class="text-xs text-slate-500 font-medium">Theo dõi công nợ KH</p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                <!-- KHÁCH HÀNG -->
+                <a href="/customer-manager/" class="card-hover">
+                    <div class="bg-white rounded-3xl p-6 shadow-lg border-2 border-cyan-100 hover:border-cyan-300">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center">
+                                <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-black text-slate-800">Khách Hàng</h4>
+                                <p class="text-xs text-slate-500 font-medium">Quản lý khách hàng</p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- SẢN PHẨM -->
+                <a href="/product-manager/" class="card-hover">
+                    <div class="bg-white rounded-3xl p-6 shadow-lg border-2 border-purple-100 hover:border-purple-300">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-black text-slate-800">Sản Phẩm</h4>
+                                <p class="text-xs text-slate-500 font-medium">Quản lý sản phẩm</p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- ADMIN PANEL -->
+                <a href="/admin/" class="card-hover">
+                    <div class="bg-white rounded-3xl p-6 shadow-lg border-2 border-slate-200 hover:border-slate-400">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
+                                <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                                    </path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-black text-slate-800">Quản Trị</h4>
+                                <p class="text-xs text-slate-500 font-medium">Cài đặt hệ thống</p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- PHÍM TẮT -->
+        <div class="bg-white rounded-3xl p-6 shadow-lg border-2 border-slate-200">
+            <h3 class="text-lg font-black text-slate-700 mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4">
+                    </path>
+                </svg>
+                Phím Tắt Nhanh
+            </h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="flex items-center gap-3">
+                    <kbd class="px-3 py-2 bg-slate-100 border-2 border-slate-300 rounded-lg text-xs font-black">F1</kbd>
+                    <span class="text-sm text-slate-600 font-medium">Bán hàng</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <kbd class="px-3 py-2 bg-slate-100 border-2 border-slate-300 rounded-lg text-xs font-black">F2</kbd>
+                    <span class="text-sm text-slate-600 font-medium">Tìm SP</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <kbd class="px-3 py-2 bg-slate-100 border-2 border-slate-300 rounded-lg text-xs font-black">F4</kbd>
+                    <span class="text-sm text-slate-600 font-medium">Thêm KH</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <kbd class="px-3 py-2 bg-slate-100 border-2 border-slate-300 rounded-lg text-xs font-black">F5</kbd>
+                    <span class="text-sm text-slate-600 font-medium">Phiếu thu</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <kbd class="px-3 py-2 bg-slate-100 border-2 border-slate-300 rounded-lg text-xs font-black">F7</kbd>
+                    <span class="text-sm text-slate-600 font-medium">Thêm SP</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <kbd class="px-3 py-2 bg-slate-100 border-2 border-slate-300 rounded-lg text-xs font-black">F8</kbd>
+                    <span class="text-sm text-slate-600 font-medium">Hoàn hàng</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <kbd class="px-3 py-2 bg-slate-100 border-2 border-slate-300 rounded-lg text-xs font-black">F9</kbd>
+                    <span class="text-sm text-slate-600 font-medium">Thanh toán</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <kbd
+                        class="px-3 py-2 bg-slate-100 border-2 border-slate-300 rounded-lg text-xs font-black">ESC</kbd>
+                    <span class="text-sm text-slate-600 font-medium">Hủy/Đóng</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="mt-12 pb-8">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <p class="text-slate-400 text-sm font-medium">
+                © 2025 Gemini POS - Hệ Thống Quản Lý Bán Hàng
+                <span class="mx-2">•</span>
+                <a href="#" class="text-blue-600 hover:text-blue-700 font-bold">Hỗ trợ</a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('dashboard', () => ({
+                today: new Date().toLocaleDateString('vi-VN', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                }),
+                currentTime: new Date().toLocaleTimeString('vi-VN'),
+
+                init() {
+                    // Cập nhật thời gian mỗi giây
+                    setInterval(() => {
+                        this.currentTime = new Date().toLocaleTimeString('vi-VN');
+                    }, 1000);
+
+                    // Keyboard shortcuts
+                    document.addEventListener('keydown', (e) => {
+                        if (e.key === 'F1') {
+                            e.preventDefault();
+                            window.location.href = '/pos/';
+                        }
+                        if (e.key === 'F5') {
+                            e.preventDefault();
+                            window.location.href = '{% url "danh_sach_phieu_thu" %}';
+                        }
+                        if (e.key === 'F8') {
+                            e.preventDefault();
+                            window.location.href = '/pos-hoan/';
+                        }
+                    });
+                }
+            }));
+        });
+    </script>
+</body>
+
+</html>

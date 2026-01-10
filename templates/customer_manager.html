@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản Lý Khách Hàng | Gemini POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        [x-cloak] { display: none !important; }
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-purple-50 to-pink-50 min-h-screen" x-data="customerManager()" x-cloak>
+    {% csrf_token %}
+
+    <!-- NAVIGATION -->
+    <nav class="bg-gradient-to-r from-purple-600 to-pink-600 border-b border-purple-700 p-4 shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <h1 class="text-2xl font-black text-white tracking-tight">👥 QUẢN LÝ KHÁCH HÀNG</h1>
+                <a href="/" class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold text-xs uppercase transition-all">
+                    ← Trang chủ
+                </a>
+                <a href="/pos/" class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold text-xs uppercase transition-all">
+                    POS
+                </a>
+            </div>
+            <div class="text-white text-sm font-semibold">
+                Tổng: <span class="font-black text-lg" x-text="customers.length"></span> khách hàng
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <div class="max-w-7xl mx-auto p-6 space-y-6">
+        
+        <!-- SEARCH & FILTER BAR -->
+        <div class="bg-white rounded-2xl shadow-lg border-2 border-purple-200 p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">🔍 Tìm kiếm</label>
+                    <input type="text" x-model="searchQuery" 
+                        class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl focus:border-purple-500 outline-none font-semibold"
+                        placeholder="Tên khách, SĐT, địa chỉ...">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">📊 Phân loại</label>
+                    <select x-model="filterType" class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl focus:border-purple-500 outline-none font-semibold">
+                        <option value="all">Tất cả</option>
+                        <option value="LE">Lẻ</option>
+                        <option value="SI">Sỉ</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button @click="showAddModal = true" 
+                        class="w-full px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 uppercase text-sm">
+                        ➕ Thêm mới
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CUSTOMERS TABLE -->
+        <div class="bg-white rounded-2xl shadow-lg border-2 border-purple-200 overflow-hidden">
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full">
+                    <thead class="bg-gradient-to-r from-slate-800 to-purple-900 text-white">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-black uppercase tracking-wider">
+                                <div class="flex items-center gap-2">
+                                    🏷️ Mã KH
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-black uppercase tracking-wider">
+                                <div class="flex items-center gap-2">
+                                    👤 Khách hàng
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-black uppercase tracking-wider">
+                                <div class="flex items-center justify-center gap-2">
+                                    📞 Liên hệ
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-black uppercase tracking-wider">
+                                <div class="flex items-center justify-center gap-2">
+                                    📊 Phân loại
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-right text-xs font-black uppercase tracking-wider">
+                                <div class="flex items-center justify-end gap-2">
+                                    💰 Dư nợ
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-right text-xs font-black uppercase tracking-wider">
+                                <div class="flex items-center justify-end gap-2">
+                                    🎯 Hạn mức
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-black uppercase tracking-wider">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        <template x-for="(customer, index) in filteredCustomers" :key="customer.id">
+                            <tr class="hover:bg-purple-50 transition-colors duration-150">
+                                <td class="px-6 py-4">
+                                    <div class="font-bold text-purple-600" x-text="customer.ma"></div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-black text-lg">
+                                            <span x-text="customer.ten.charAt(0).toUpperCase()"></span>
+                                        </div>
+                                        <div>
+                                            <div class="font-bold text-slate-800" x-text="customer.ten"></div>
+                                            <div class="text-xs text-slate-400" x-text="customer.diachi || '-'"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <div class="font-semibold text-slate-700" x-text="customer.sdt || '-'"></div>
+                                    <div class="text-xs text-slate-400" x-text="customer.email || '-'"></div>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="px-4 py-2 rounded-full text-xs font-black uppercase"
+                                          :class="customer.phan_loai === 'SI' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'"
+                                          x-text="customer.phan_loai === 'SI' ? 'Sỉ' : 'Lẻ'"></span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="font-black text-lg" 
+                                         :class="customer.du_no > 0 ? 'text-red-600' : 'text-green-600'"
+                                         x-text="formatVND(customer.du_no)"></div>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="font-semibold text-slate-600" x-text="formatVND(customer.han_muc_no)"></div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <button @click="editCustomer(customer)" 
+                                            class="p-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-all hover:scale-110" title="Sửa">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+                                        <button @click="viewDetail(customer)" 
+                                            class="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all hover:scale-110" title="Chi tiết">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                
+                <template x-if="filteredCustomers.length === 0">
+                    <div class="p-24 text-center">
+                        <div class="text-6xl mb-4">👥</div>
+                        <div class="text-xl font-bold text-slate-400">Không tìm thấy khách hàng</div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD/EDIT CUSTOMER -->
+    <div x-show="showAddModal" @click.self="showAddModal = false"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="sticky top-0 bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-t-3xl">
+                <h3 class="text-2xl font-black" x-text="editingCustomer ? '✏️ SỬA KHÁCH HÀNG' : '➕ THÊM KHÁCH HÀNG MỚI'"></h3>
+            </div>
+            
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Mã khách hàng</label>
+                        <input type="text" x-model="formData.ma" disabled
+                            class="w-full px-4 py-3 bg-slate-100 border-2 border-slate-200 rounded-xl font-bold text-slate-400"
+                            placeholder="Tự động tạo">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Tên khách hàng *</label>
+                        <input type="text" x-model="formData.ten"
+                            class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl focus:border-purple-500 outline-none font-semibold"
+                            placeholder="Nhập tên khách hàng...">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Số điện thoại</label>
+                        <input type="text" x-model="formData.sdt"
+                            class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl focus:border-purple-500 outline-none font-semibold"
+                            placeholder="090...">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Email</label>
+                        <input type="email" x-model="formData.email"
+                            class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl focus:border-purple-500 outline-none font-semibold"
+                            placeholder="email@example.com">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Địa chỉ</label>
+                    <input type="text" x-model="formData.diachi"
+                        class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl focus:border-purple-500 outline-none font-semibold"
+                        placeholder="Số nhà, đường, quận...">
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Phân loại</label>
+                        <select x-model="formData.phan_loai"
+                            class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl focus:border-purple-500 outline-none font-semibold">
+                            <option value="LE">Lẻ</option>
+                            <option value="SI">Sỉ</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Nợ đầu kỳ</label>
+                        <input type="text" x-model="formData.no_dau_ky"
+                            class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl focus:border-purple-500 outline-none font-semibold text-right"
+                            placeholder="0">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Hạn mức nợ</label>
+                        <input type="text" x-model="formData.han_muc_no"
+                            class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl focus:border-purple-500 outline-none font-semibold text-right"
+                            placeholder="0">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Mã số thuế</label>
+                    <input type="text" x-model="formData.mst"
+                        class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl focus:border-purple-500 outline-none font-semibold"
+                        placeholder="MST...">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Ghi chú</label>
+                    <textarea x-model="formData.ghichu" rows="3"
+                        class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl focus:border-purple-500 outline-none font-medium"
+                        placeholder="Thông tin thêm..."></textarea>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button @click="saveCustomer"
+                        class="flex-1 px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-all uppercase">
+                        💾 Lưu lại
+                    </button>
+                    <button @click="showAddModal = false"
+                        class="px-6 py-4 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-all uppercase">
+                        Hủy
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function formatVND(value) {
+            if (!value && value !== 0) return '0';
+            return new Intl.NumberFormat('vi-VN').format(value);
+        }
+
+        function customerManager() {
+            return {
+                customers: [],
+                searchQuery: '',
+                filterType: 'all',
+                showAddModal: false,
+                editingCustomer: null,
+                formData: {
+                    ma: '',
+                    ten: '',
+                    sdt: '',
+                    email: '',
+                    diachi: '',
+                    phan_loai: 'LE',
+                    no_dau_ky: 0,
+                    han_muc_no: 0,
+                    mst: '',
+                    ghichu: ''
+                },
+
+                init() {
+                    this.loadCustomers();
+                },
+
+                get filteredCustomers() {
+                    return this.customers.filter(c => {
+                        const matchSearch = !this.searchQuery || 
+                            c.ten.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                            (c.sdt && c.sdt.includes(this.searchQuery)) ||
+                            (c.diachi && c.diachi.toLowerCase().includes(this.searchQuery.toLowerCase()));
+                        
+                        const matchType = this.filterType === 'all' || c.phan_loai === this.filterType;
+                        
+                        return matchSearch && matchType;
+                    });
+                },
+
+                async loadCustomers() {
+                    try {
+                        const res = await fetch('/api/get-customers/');
+                        const data = await res.json();
+                        this.customers = data;
+                    } catch (e) {
+                        alert('Lỗi tải dữ liệu: ' + e);
+                    }
+                },
+
+                editCustomer(customer) {
+                    this.editingCustomer = customer;
+                    this.formData = { ...customer };
+                    this.showAddModal = true;
+                },
+
+                async saveCustomer() {
+                    if (!this.formData.ten) {
+                        return alert('Vui lòng nhập tên khách hàng!');
+                    }
+
+                    try {
+                        const url = this.editingCustomer ? `/api/update-customer/${this.editingCustomer.id}/` : '/api/add-customer/';
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': this.getCSRFToken()
+                            },
+                            body: JSON.stringify(this.formData)
+                        });
+                        
+                        const result = await res.json();
+                        if (result.status === 'success') {
+                            alert(this.editingCustomer ? 'Cập nhật thành công!' : 'Thêm mới thành công!');
+                            this.showAddModal = false;
+                            this.editingCustomer = null;
+                            this.resetForm();
+                            this.loadCustomers();
+                        } else {
+                            alert('Lỗi: ' + result.message);
+                        }
+                    } catch (e) {
+                        alert('Lỗi: ' + e);
+                    }
+                },
+
+                viewDetail(customer) {
+                    window.location.href = `/customer-detail/${customer.id}/`;
+                },
+
+                resetForm() {
+                    this.formData = {
+                        ma: '',
+                        ten: '',
+                        sdt: '',
+                        email: '',
+                        diachi: '',
+                        phan_loai: 'LE',
+                        no_dau_ky: 0,
+                        han_muc_no: 0,
+                        mst: '',
+                        ghichu: ''
+                    };
+                },
+
+                getCSRFToken() {
+                    return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                        document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+                },
+
+                formatVND
+            }
+        }
+    </script>
+</body>
+</html>
