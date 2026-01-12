@@ -2,14 +2,14 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = 'your-secret-key'
+SECRET_KEY = 'django-insecure-&h)k7#v@l*6m^q!2p$9z_x+5u(w1r8-j4y0=b3t#i&f1c9s!@'
 DEBUG = True
 ALLOWED_HOSTS = []
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = 'pos'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_SAVE_EVERY_REQUEST = True       # Làm mới liên tục khi dùng
-SESSION_COOKIE_AGE = 10000     
+SESSION_COOKIE_AGE = 12000     
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
