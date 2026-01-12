@@ -1,5 +1,7 @@
 from django.contrib import admin
-from unfold.admin import ModelAdmin, TabularInline
+from django.contrib import admin
+ModelAdmin = admin.ModelAdmin
+TabularInline = admin.TabularInline
 from .models import (
     KhachHang, SanPham, HoaDonBan, ChiTietHoaDonBan, 
     HoaDonHoan, PhieuThu, SoCaiCongNo

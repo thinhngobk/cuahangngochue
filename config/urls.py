@@ -39,6 +39,8 @@ urlpatterns = [
     path('customer-manager/', login_required(views.customer_manager), name='customer_manager'),
     path('product-manager/', login_required(views.product_manager), name='product_manager'),
     path('api/get-customers/', login_required(customer_views.get_customers_api), name='get_customers_api'),
+    path('api/customer-detail/<int:kh_id>/', login_required(customer_views.get_customer_detail_api), name='customer_detail_api'),
+
 
     # Phiếu thu & Công nợ
     path('api/save-receipt/', login_required(views.save_receipt), name='save_receipt'),

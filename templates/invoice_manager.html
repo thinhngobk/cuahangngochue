@@ -56,9 +56,15 @@
                         <option value="canceled">❌ Đã hủy</option>
                     </select>
 
-                    <input type="date" x-model="filterDate" @change="fetchInvoices()"
+                    <input type="text" x-model="searchInvoiceCode" @input.debounce.300ms="fetchInvoices()"
+                        placeholder="Tìm mã HĐ..."
+                        class="px-4 py-3 w-40 rounded-2xl border-2 border-slate-200 shadow-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-sm bg-white transition-all">
+
+                    <input type="date" x-model="filterFromDate" @change="fetchInvoices()"
                         class="px-4 py-3 rounded-2xl border-2 border-slate-200 shadow-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-sm bg-white transition-all">
 
+                    <input type="date" x-model="filterToDate" @change="fetchInvoices()"
+                        class="px-4 py-3 rounded-2xl border-2 border-slate-200 shadow-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-sm bg-white transition-all">
                     <button @click="resetFilters()"
                         class="p-3 bg-white text-slate-500 rounded-2xl shadow-sm hover:text-blue-600 hover:bg-blue-50 border-2 border-slate-200 transition-all group">
                         <svg class="w-6 h-6 group-hover:rotate-180 transition-transform duration-500" fill="none"
@@ -73,8 +79,8 @@
 
         <!-- Table Section -->
         <div
-            class="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl shadow-slate-300/50 overflow-hidden border border-white">
-            <div class="overflow-x-auto">
+            class="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl shadow-slate-300/50 overflow-visible border border-white">
+            <div class="overflow-visible">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr
@@ -197,7 +203,7 @@
 
                                         <!-- Dropdown Menu -->
                                         <div x-show="open" x-cloak
-                                            class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden">
+                                            class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-visible z-50">
 
                                             <!-- Xem chi tiết -->
                                             <button @click="viewDetail(hd.ma_hd); open = false"
@@ -363,7 +369,7 @@
                 </div>
 
                 <!-- Danh sách sản phẩm -->
-                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                <div class="border border-slate-200 rounded-xl overflow-visible">
                     <div class="bg-slate-50 px-4 py-2 border-b border-slate-200">
                         <h4 class="font-bold text-slate-700 text-sm">Sản phẩm</h4>
                     </div>
@@ -549,11 +555,11 @@
                 trang_thai_don: '',
                 ngay: ''
             },
-
-            filterDate: '',
             searchCustomer: '',
             filterStatus: 'all',
-
+            searchInvoiceCode: '',
+            filterFromDate: '',
+            filterToDate: '',
             formatVND(n) {
                 let num = parseFloat(n) || 0;
                 return num.toLocaleString('en-US');
@@ -577,9 +583,11 @@
             async fetchInvoices(page = 1) {
                 this.currentPage = page;
                 const params = new URLSearchParams({
-                    date: this.filterDate,
                     customer: this.searchCustomer,
                     status: this.filterStatus,
+                    invoice_code: this.searchInvoiceCode,
+                    from_date: this.filterFromDate,
+                    to_date: this.filterToDate,
                     page: this.currentPage
                 });
 
@@ -681,10 +689,12 @@
                 window.open(`/print-invoice/${ma_hd}/`, '_blank');
             },
 
-            resetFilters() {
-                this.filterDate = '';
+            resetFilters() {    
                 this.searchCustomer = '';
                 this.filterStatus = 'all';
+                this.searchInvoiceCode = '';
+                this.filterFromDate = '';
+                this.filterToDate = '';
                 this.fetchInvoices();
             },
 

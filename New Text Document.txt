@@ -27,3 +27,9 @@ python manage.py shell < create_test_data.py
 4. Nhân viên có quyền tạo, xem, huỷ, chỉnh sửa khi pending
 ,
 cây thư mục: models,signals, app.py, admin.py view/(customer_views,ledger_views,page_views,product_views,return_views,helper_views,receipt_views)
+staff1    → staff123
+manager1  → manager123
+admin1    → admin123
+git init
+git config user.name "baochaugreen2024"
+git config user.email "baochaugreen@gmail.com"

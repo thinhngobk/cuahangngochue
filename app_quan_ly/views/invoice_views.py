@@ -5,7 +5,8 @@ from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Sum, Q  # ← THÊM Q
+from unidecode import unidecode      # ← THÊM dòng này
 from django.core.paginator import Paginator
 from app_quan_ly.models import (
     HoaDonBan, ChiTietHoaDonBan, SanPham, PhieuThu, SoCaiCongNo
@@ -244,17 +245,32 @@ def get_invoice_detail_api(request, ma_hd):
 def get_invoices_api(request):
     """API lấy danh sách hóa đơn bán hàng"""
     try:
-        ngay_loc = request.GET.get('date')
-        ten_khach = request.GET.get('customer')
+        search_query = request.GET.get('customer', '').strip()
         tt_don = request.GET.get('status')
+        tu_ngay = request.GET.get('from_date', '').strip()
+        den_ngay = request.GET.get('to_date', '').strip()
+        invoice_code = request.GET.get('invoice_code', '').strip()  # ← THÊM dòng này
         page_number = request.GET.get('page', 1)
         page_size = 15
 
         hds = HoaDonBan.objects.select_related('khachhang').all().order_by('-ngaylap', '-ngaytao')  # ← Ưu tiên ngaylap
-        if ngay_loc:
-            hds = hds.filter(ngaylap=ngay_loc)  # ← Lọc theo ngaylap
-        if ten_khach:
-            hds = hds.filter(khachhang__tenkhachhang__icontains=ten_khach)
+        # ✅ LỌC THEO NGÀY (1 ngày cụ thể HOẶC khoảng ngày)
+        if tu_ngay and den_ngay:
+            hds = hds.filter(ngaylap__range=[tu_ngay, den_ngay])
+        elif tu_ngay:
+            hds = hds.filter(ngaylap__gte=tu_ngay)
+        elif den_ngay:
+            hds = hds.filter(ngaylap__lte=den_ngay)
+        if search_query:
+            q_nd = unidecode(search_query).lower()
+            hds = hds.filter(
+                Q(mahoadonban__icontains=search_query) |                      # Mã HĐ
+                Q(khachhang__tenkhachhangkhongdau__icontains=q_nd) |          # Tên KH
+                Q(khachhang__sdt__icontains=search_query) |                   # SĐT
+                Q(khachhang__makhachhang__iexact=search_query)                # Mã KH
+            )
+        if invoice_code:
+            hds = hds.filter(mahoadonban__icontains=invoice_code)
         if tt_don and tt_don != 'all':
             hds = hds.filter(trangthaidon=tt_don)
 
@@ -489,7 +505,7 @@ def print_invoice_hoan(request, ma_hd):
     chitiet = hoadon.chitiet_hoan.all()
     
     tam_tinh = sum(item.thanhtien for item in chitiet)
-    tien_chiet_khau = tam_tinh * (hoadon.chietkhauchung / 100)
+    tien_chiet_khau = 0
     
     return render(request, 'print_invoice_hoan.html', {
         'hoadon': hoadon,

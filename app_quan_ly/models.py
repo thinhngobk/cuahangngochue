@@ -24,6 +24,13 @@ class KhachHang(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     ghichu = models.TextField(blank=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['tenkhachhangkhongdau']),
+            models.Index(fields=['sdt']),
+            models.Index(fields=['makhachhang']),
+            models.Index(fields=['is_active']),
+        ]
     def save(self, *args, **kwargs):
         if self.tenkhachhang:
             self.tenkhachhangkhongdau = unidecode(self.tenkhachhang).lower()
@@ -103,7 +110,13 @@ class SanPham(models.Model):
     ngaycapnhat = models.DateTimeField(auto_now=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     is_active = models.BooleanField(default=True, verbose_name="Đang kinh doanh")
-    
+    class Meta:
+        indexes = [
+            models.Index(fields=['tensanphamkhongdau']),
+            models.Index(fields=['masanpham']),
+            models.Index(fields=['barcode']),
+            models.Index(fields=['is_active']),
+        ]       
     def save(self, *args, **kwargs):
         if self.tensanpham:
             self.tensanphamkhongdau = unidecode(self.tensanpham).lower()
@@ -123,13 +136,26 @@ class HoaDonBan(models.Model):
         ('pending', 'Chờ duyệt'), 
         ('approved', 'Đã duyệt'), 
         ('canceled', 'Hủy')
-    ]
-    
+    ]        
     class Meta:
         permissions = [
             ("approve_hoadonban", "Có thể duyệt hóa đơn bán"),
             ("cancel_hoadonban", "Có thể hủy hóa đơn bán"),
         ]
+        indexes = [
+                # Index 1: Tìm theo mã hóa đơn
+            models.Index(fields=['mahoadonban']),
+                
+                # Index 2: Lọc theo khách hàng + ngày
+            models.Index(fields=['khachhang', '-ngaylap']),
+                
+                # Index 3: Lọc theo trạng thái
+            models.Index(fields=['trangthaidon']),
+                
+            # Index 4: Sắp xếp theo ngày (mới nhất)
+            models.Index(fields=['-ngaylap', '-ngaytao']),
+            ]    
+
     
     mahoadonban = models.CharField(max_length=50, unique=True, editable=False)
     khachhang = models.ForeignKey(KhachHang, on_delete=models.PROTECT, related_name='hoadon_ban')
@@ -142,7 +168,7 @@ class HoaDonBan(models.Model):
     ngaylap = models.DateField(default=date.today) # ngày xuất háo đơn thực tế
     ngaycapnhat = models.DateTimeField(auto_now=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    
+ 
     def save(self, *args, **kwargs):
         if self.khachhangungtien:
             self.khachhangungtien = int(self.khachhangungtien)
@@ -182,10 +208,16 @@ class HoaDonHoan(models.Model):
     TRANG_THAI_DUYET = [('pending', 'Chờ duyệt'), ('approved', 'Đã duyệt'), ('canceled', 'Hủy')]
     
     class Meta:
-        permissions = [
-            ("approve_hoadonhoan", "Có thể duyệt đơn hoàn"),
-            ("cancel_hoadonhoan", "Có thể hủy đơn hoàn"),
-        ]
+            permissions = [
+                ("approve_hoadonhoan", "Có thể duyệt đơn hoàn"),
+                ("cancel_hoadonhoan", "Có thể hủy đơn hoàn"),
+            ]
+            indexes = [
+                models.Index(fields=['mahoadonhoan']),
+                models.Index(fields=['khachhang', '-ngaylap']),
+                models.Index(fields=['trangthaiduyet']),
+                models.Index(fields=['-ngaylap']),
+            ]
     
     mahoadonhoan = models.CharField(max_length=50, unique=True, editable=False)
     khachhang = models.ForeignKey(KhachHang, on_delete=models.PROTECT, related_name='hoadon_hoan')
@@ -195,7 +227,7 @@ class HoaDonHoan(models.Model):
     ngaylap = models.DateField(default=date.today) 
     ngayduyet = models.DateTimeField(null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    
+
     def save(self, *args, **kwargs):
         if not self.mahoadonhoan:
 

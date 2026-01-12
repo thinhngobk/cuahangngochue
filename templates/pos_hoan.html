@@ -1,5 +1,18 @@
 <!DOCTYPE html>
 <html lang="vi">
+<script>
+    class SubmitLock {
+        constructor() { this.locks = new Map(); }
+        tryLock(key, timeout = 3000) {
+            if (this.locks.has(key)) return false;
+            this.locks.set(key, true);
+            setTimeout(() => this.locks.delete(key), timeout);
+            return true;
+        }
+        unlock(key) { this.locks.delete(key); }
+    }
+    window.submitLock = new SubmitLock();
+</script>
 
 <head>
     <meta charset="UTF-8">
@@ -36,60 +49,201 @@
 <body class="bg-slate-100" x-data="posHoanSystem()" x-cloak>
     {% csrf_token %}
 
-    <nav class="bg-gradient-to-r from-rose-600 to-pink-600 border-b border-rose-700 p-4 mb-4 shadow-lg">
-        <div class="max-w-[98%] mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-4">
-                <h1 class="text-2xl font-black text-white tracking-tighter">
-                    <span class="opacity-90">GEMINI</span> HOÀN HÀNG
-                </h1>
+    <!-- 
+=================================================================
+NAVBAR MỚI VỚI DROPDOWN MENU
+=================================================================
+Thay thế navbar cũ bằng code này
+-->
 
-                <a href="/"
-                    class="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-2xl font-black text-xs uppercase transition-all duration-300 backdrop-blur-sm">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
-                        </path>
-                    </svg>
-                    Trang Chủ
-                </a>
+    <nav
+        class="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 shadow-2xl border-b-2 border-blue-500">
+        <div class="max-w-full px-4 py-2" x-data="{ 
+        openDropdown: null,
+        toggleDropdown(name) {
+            this.openDropdown = this.openDropdown === name ? null : name;
+        },
+        closeDropdowns() {
+            this.openDropdown = null;
+        }
+    }" @click.away="closeDropdowns()">
+            <div class="flex items-center justify-between">
 
-                <a href="/pos/"
-                    class="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-2xl font-black text-xs uppercase transition-all duration-300 backdrop-blur-sm">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z">
-                        </path>
-                    </svg>
-                    POS Bán Hàng
-                </a>
+                <!-- LOGO + MENU -->
+                <div class="flex items-center gap-6">
+                    <!-- Logo -->
+                    <a href="/" class="flex items-center gap-2">
+                        <div
+                            class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <span class="text-white font-black text-lg hidden lg:block">GEMINI POS</span>
+                    </a>
 
-                <a href="/hoa-don-hoan/"
-                    class="flex items-center gap-2 px-4 py-2 bg-white/90 hover:bg-white text-rose-700 rounded-2xl font-black text-xs uppercase transition-all duration-300 shadow-md">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
-                        </path>
-                    </svg>
-                    Lịch Sử Hoàn Hàng
-                </a>
+                    <!-- Menu với Dropdown -->
+                    <div class="flex items-center gap-2">
+                        <!-- Trang chủ -->
+                        <a href="/"
+                            class="px-3 py-2 rounded-lg text-white hover:bg-white/10 transition-all font-medium text-sm">
+                            🏠 <span class="hidden md:inline">Trang chủ</span>
+                        </a>
 
-                <a href="{% url 'danh_sach_phieu_thu' %}"
-                    class="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-2xl font-black text-xs uppercase transition-all duration-300 backdrop-blur-sm">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z">
-                        </path>
-                    </svg>
-                    Lập Phiếu Thu
-                </a>
-            </div>
+                        <!-- BÁN HÀNG - Dropdown -->
+                        <div class="relative">
+                            <button @click="toggleDropdown('ban-hang')"
+                                class="px-3 py-2 rounded-lg text-white hover:bg-blue-600 transition-all font-medium text-sm flex items-center gap-1">
+                                🛒 <span class="hidden md:inline">Bán hàng</span>
+                                <svg class="w-4 h-4" :class="{'rotate-180': openDropdown === 'ban-hang'}" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                            <!-- Dropdown Menu -->
+                            <div x-show="openDropdown === 'ban-hang'"
+                                x-transition:enter="transition ease-out duration-100"
+                                x-transition:enter-start="opacity-0 scale-95"
+                                x-transition:enter-end="opacity-100 scale-100"
+                                x-transition:leave="transition ease-in duration-75"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-95"
+                                class="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-2"
+                                style="display: none;">
+                                <a href="/pos/"
+                                    class="flex items-center gap-3 px-4 py-2 hover:bg-blue-50 transition-colors">
+                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z">
+                                        </path>
+                                    </svg>
+                                    <div>
+                                        <div class="font-bold text-slate-800 text-sm">Tạo đơn bán</div>
+                                        <div class="text-xs text-slate-500">POS bán hàng</div>
+                                    </div>
+                                </a>
+                                <a href="/hoa-don/"
+                                    class="flex items-center gap-3 px-4 py-2 hover:bg-blue-50 transition-colors">
+                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                                        </path>
+                                    </svg>
+                                    <div>
+                                        <div class="font-bold text-slate-800 text-sm">Danh sách hóa đơn</div>
+                                        <div class="text-xs text-slate-500">Lịch sử đơn bán</div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
 
-            <div class="flex items-center gap-3">
-                <span class="text-xs font-bold text-white/80" x-text="today"></span>
+                        <!-- HOÀN HÀNG - Dropdown -->
+                        <div class="relative">
+                            <button @click="toggleDropdown('hoan-hang')"
+                                class="px-3 py-2 rounded-lg text-white hover:bg-rose-600 transition-all font-medium text-sm flex items-center gap-1">
+                                🔄 <span class="hidden md:inline">Hoàn hàng</span>
+                                <svg class="w-4 h-4" :class="{'rotate-180': openDropdown === 'hoan-hang'}" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                            <!-- Dropdown Menu -->
+                            <div x-show="openDropdown === 'hoan-hang'"
+                                x-transition:enter="transition ease-out duration-100"
+                                x-transition:enter-start="opacity-0 scale-95"
+                                x-transition:enter-end="opacity-100 scale-100"
+                                x-transition:leave="transition ease-in duration-75"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-95"
+                                class="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-2"
+                                style="display: none;">
+                                <a href="/pos-hoan/"
+                                    class="flex items-center gap-3 px-4 py-2 hover:bg-rose-50 transition-colors">
+                                    <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z">
+                                        </path>
+                                    </svg>
+                                    <div>
+                                        <div class="font-bold text-slate-800 text-sm">Tạo đơn hoàn</div>
+                                        <div class="text-xs text-slate-500">Xử lý trả hàng</div>
+                                    </div>
+                                </a>
+                                <a href="/hoa-don-hoan/"
+                                    class="flex items-center gap-3 px-4 py-2 hover:bg-rose-50 transition-colors">
+                                    <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                                        </path>
+                                    </svg>
+                                    <div>
+                                        <div class="font-bold text-slate-800 text-sm">Danh sách đơn hoàn</div>
+                                        <div class="text-xs text-slate-500">Lịch sử hoàn hàng</div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Phiếu thu -->
+                        <a href="{% url 'danh_sach_phieu_thu' %}"
+                            class="px-3 py-2 rounded-lg text-white hover:bg-amber-600 transition-all font-medium text-sm">
+                            💰 <span class="hidden md:inline">Phiếu thu</span>
+                        </a>
+
+                        <!-- Sổ công nợ -->
+                        <a href="{% url 'so_cai_cong_no' %}"
+                            class="px-3 py-2 rounded-lg text-white hover:bg-purple-600 transition-all font-medium text-sm">
+                            📖 <span class="hidden md:inline">Sổ công nợ</span>
+                        </a>
+
+                        <!-- Khách hàng -->
+                        <a href="/customer-manager/"
+                            class="px-3 py-2 rounded-lg text-white hover:bg-cyan-600 transition-all font-medium text-sm">
+                            👥 <span class="hidden md:inline">Khách hàng</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- USER INFO + LOGOUT -->
+                <div class="flex items-center gap-3">
+                    <!-- User Info -->
+                    <div class="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-1.5">
+                        <div
+                            class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center font-black text-white text-sm">
+                            {{ request.user.username|slice:":1"|upper }}
+                        </div>
+                        <div class="text-left hidden sm:block">
+                            <div class="text-white text-sm font-bold">{{ request.user.username }}</div>
+                            <div class="text-blue-300 text-xs">
+                                {% if request.user.is_superuser %}👑 Admin
+                                {% elif request.user.groups.all %}{{ request.user.groups.first.name }}
+                                {% else %}User{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Logout -->
+                    <form method="POST" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit"
+                            class="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold px-3 py-2 rounded-lg transition-all">
+                            🚪 <span class="hidden md:inline">Thoát</span>
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </nav>
 
+    <!-- Khoảng trống để content không bị navbar che -->
+    <div class="h-14"></div>
     <div class="max-w-[99%] mx-auto p-3 grid grid-cols-12 gap-4 h-[calc(100vh-100px)] overflow-hidden">
         <div class="col-span-12 lg:col-span-9 space-y-3 h-full overflow-y-auto pr-2">
             <div class="relative bg-white p-3 rounded-2xl shadow-sm border border-rose-200">
@@ -99,10 +253,10 @@
                     <div class="relative flex-1">
                         <input type="text" id="search-input" x-model="searchProdQuery"
                             class="w-full p-4 border-2 border-blue-100 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:outline-none text-xl font-bold transition-all placeholder:text-slate-300"
-                            placeholder="F2: Tìm tên sản phẩm (≥3 ký tự)..." hx-get="/search-sp/"
-                            hx-trigger="keyup[target.value.length >= 3] changed delay:200ms" hx-target="#search-results"
+                            placeholder="F2: Tìm tên sản phẩm (≥2 ký tự)..." hx-get="/search-sp/"
+                            hx-trigger="keyup[target.value.length >= 2] changed delay:300ms" hx-target="#search-results"
                             name="q" autocomplete="off">
-                        <div id="search-results" x-show="searchProdQuery.length >= 3"
+                        <div id="search-results" x-show="searchProdQuery.length >= 2"
                             class="absolute w-full left-0 z-50 bg-white border shadow-2xl rounded-b-2xl mt-2 max-h-96 overflow-y-auto"
                             @click.away="searchProdQuery = ''"></div>
                     </div>
@@ -452,32 +606,43 @@
             },
 
             async saveInvoiceAction(shouldApprove) {
-                if (this.cart.length === 0) return alert("Giỏ hàng trống!");
-                if (!this.khachhang_id) return alert("Vui lòng chọn khách hàng!");
-
-                this.calculate();
-
-                const payload = {
-                    khachhang_id: this.khachhang_id,
-                    ghichu_don: this.ghichu_don,
-                    ngay_lap: this.ngayLap,
-                    items: this.cart.map(item => ({
-                        id: item.id,
-                        soluong: item.soluong,
-                        gia: item.gia,
-                        donvi: item.donvi,
-                        ck_item: parseFloat(item.ck_item) || 0,
-                        ghichu_sp: item.ghichu_sp || ''
-                    })),
-                    admin_approve: shouldApprove
-                };
-
-                // ✅ CHỌN API DỰA TRÊN EDIT MODE
-                const url = this.editMode
-                    ? `/api/hoan/edit/${this.editInvoiceId}/`
-                    : '/api/save-invoice-hoan/';
+                // ✅ THÊM: Kiểm tra lock
+                if (!window.submitLock.tryLock('save-invoice-hoan', 5000)) {
+                    alert('⚠️ Đang lưu đơn hoàn, vui lòng đợi...');
+                    return;
+                }
 
                 try {
+                    if (this.cart.length === 0) {
+                        alert("Giỏ hàng trống!");
+                        return;
+                    }
+                    if (!this.khachhang_id) {
+                        alert("Vui lòng chọn khách hàng!");
+                        return;
+                    }
+
+                    this.calculate();
+
+                    const payload = {
+                        khachhang_id: this.khachhang_id,
+                        ghichu_don: this.ghichu_don,
+                        ngay_lap: this.ngayLap,
+                        items: this.cart.map(item => ({
+                            id: item.id,
+                            soluong: item.soluong,
+                            gia: item.gia,
+                            donvi: item.donvi,
+                            ck_item: parseFloat(item.ck_item) || 0,
+                            ghichu_sp: item.ghichu_sp || ''
+                        })),
+                        admin_approve: shouldApprove
+                    };
+
+                    const url = this.editMode
+                        ? `/api/hoan/edit/${this.editInvoiceId}/`
+                        : '/api/save-invoice-hoan/';
+
                     const res = await fetch(url, {
                         method: 'POST',
                         headers: {
@@ -486,18 +651,25 @@
                         },
                         body: JSON.stringify(payload)
                     });
+
                     const result = await res.json();
+
                     if (result.status === 'success') {
-                        alert(this.editMode ? "Đã cập nhật đơn hoàn!" : (shouldApprove ? "Đã duyệt và cộng kho thành công!" : "Đã lưu đơn hoàn tạm!"));
-                        window.location.href = '/lich-su-hoan/';  // ✅ REDIRECT về danh sách
+                        alert(this.editMode
+                            ? "✅ Đã cập nhật đơn hoàn!"
+                            : (shouldApprove ? "✅ Đã duyệt và cộng kho thành công!" : "✅ Đã lưu đơn hoàn tạm!")
+                        );
+                        window.location.href = '/hoa-don-hoan/';
                     } else {
-                        alert("Lỗi: " + result.message);
+                        alert("❌ Lỗi: " + result.message);
                     }
                 } catch (e) {
-                    alert("Lỗi máy chủ không phản hồi!");
+                    alert("❌ Lỗi máy chủ không phản hồi!");
+                } finally {
+                    // ✅ THÊM: Unlock
+                    window.submitLock.unlock('save-invoice-hoan');
                 }
             },
-
             getCSRFToken() {
                 return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
                     document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];

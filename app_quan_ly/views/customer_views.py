@@ -6,6 +6,8 @@ import json
 from decimal import Decimal
 from django.http import JsonResponse
 from django.db import transaction
+from django.db.models import Q
+from unidecode import unidecode
 from app_quan_ly.models import KhachHang
 from django.shortcuts import render
 @transaction.atomic
@@ -127,3 +129,157 @@ def get_customers_api(request):
         'ghichu': kh.ghichu or ''
     } for kh in customers]
     return JsonResponse(data, safe=False)
+def get_customer_detail_api(request, kh_id):
+    from django.shortcuts import get_object_or_404
+    from app_quan_ly.models import KhachHang, SoCaiCongNo, PhieuThu
+
+    # Kiểm tra ID và lấy khách hàng
+    kh = get_object_or_404(KhachHang, id=kh_id)
+    
+    # Lấy sổ cái: Chú ý trường 'khachhang' (không gạch dưới) và 'tang'/'giam'
+    # Dùng filter(khachhang=kh) vì lỗi trước đó báo 'khach_hang' không tồn tại
+    ledger = SoCaiCongNo.objects.filter(khachhang=kh).order_by('-ngay_ghi_so', '-id')[:20]
+    
+    # Lấy phiếu thu
+    receipts = PhieuThu.objects.filter(khachhang=kh).order_by('-ngaylap')[:10]
+    
+    return JsonResponse({
+        'customer': {
+            'ma': kh.makhachhang,
+            'ten': kh.tenkhachhang,
+            'du_no': float(kh.du_no_hien_tai),
+            'phan_loai': kh.phanloai,
+            'sdt': kh.sdt or '',
+            'diachi': kh.diachi or '',
+        },
+        'entries': [{
+            'ngay': e.ngay_ghi_so.strftime('%d/%m/%Y'),
+            'ma': e.ma_chung_tu,
+            'tang': float(e.tang),
+            'giam': float(e.giam),
+            'ton': float(e.du_no_tuc_thoi),
+            'noidung': e.dien_giai
+        } for e in ledger],
+        'receipts': [{
+            'ma': r.maphieuthu,
+            'tien': float(r.sotienthu),
+            'ngay': r.ngaylap.strftime('%d/%m/%Y')
+        } for r in receipts]
+    })
+def search_customers_api(request):
+    """
+    API tìm kiếm khách hàng TỐI ƯU cho POS
+    Autocomplete với debounce
+    """
+    q = request.GET.get('q', '').strip()
+    limit = int(request.GET.get('limit', 15))
+    
+    # Nếu không search → Trả về danh sách gần đây
+    if not q or len(q) < 2:
+        customers = KhachHang.objects.filter(
+            is_active=True
+        ).order_by('-id')[:limit]
+    else:
+        q_khong_dau = unidecode(q).lower()
+        
+        # ✅ TÌM KIẾM CÓ THỨ TỰ ƯU TIÊN
+        # 1. TÊN BẮT ĐẦU (ưu tiên cao nhất)
+        # 2. TÊN CHỨA
+        # 3. SĐT
+        # 4. Mã KH (ít dùng nhất)
+        
+        from django.db.models import Case, When, Value, IntegerField
+        
+        customers = KhachHang.objects.filter(
+            Q(tenkhachhangkhongdau__startswith=q_khong_dau) |  # Tên bắt đầu
+            Q(tenkhachhangkhongdau__icontains=q_khong_dau) |   # Tên chứa
+            Q(sdt__icontains=q) |                               # SĐT
+            Q(makhachhang__iexact=q),                           # Mã KH
+            is_active=True
+        ).annotate(
+            # Sắp xếp theo mức độ ưu tiên
+            priority=Case(
+                When(tenkhachhangkhongdau__startswith=q_khong_dau, then=Value(1)),
+                When(tenkhachhangkhongdau__icontains=q_khong_dau, then=Value(2)),
+                When(sdt__icontains=q, then=Value(3)),
+                When(makhachhang__iexact=q, then=Value(4)),
+                default=Value(5),
+                output_field=IntegerField(),
+            )
+        ).order_by('priority', 'tenkhachhang').distinct()[:limit]
+    
+    # Serialize data
+    data = [{
+        'id': kh.id,
+        'ma': kh.makhachhang,
+        'ten': kh.tenkhachhang,
+        'sdt': kh.sdt or '',
+        'email': kh.email or '',
+        'diachi': kh.diachi or '',
+        'phan_loai': kh.phanloai,
+        'phan_loai_text': kh.get_phanloai_display(),
+        'du_no': float(kh.du_no_hien_tai),
+        'han_muc_no': float(kh.han_muc_no),
+        'trang_thai_no': kh.trang_thai_no,
+    } for kh in customers]
+    
+    return JsonResponse(data, safe=False)
+
+def get_customers_paginated_api(request):
+    """
+    API lấy danh sách khách hàng CÓ PHÂN TRANG
+    Dùng cho trang Customer Manager
+    """
+    from django.core.paginator import Paginator
+    
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 20))
+    search = request.GET.get('search', '').strip()
+    filter_type = request.GET.get('type', 'all')
+    
+    # Base queryset
+    qs = KhachHang.objects.filter(is_active=True)
+    
+    # Search
+    if search and len(search) >= 2:
+        search_nd = unidecode(search).lower()
+        qs = qs.filter(
+            Q(tenkhachhangkhongdau__icontains=search_nd) |
+            Q(sdt__icontains=search) |
+            Q(makhachhang__iexact=search) |
+            Q(email__icontains=search)
+        )
+    
+    # Filter by type
+    if filter_type != 'all':
+        qs = qs.filter(phanloai=filter_type)
+    
+    # Paginate
+    paginator = Paginator(qs.order_by('-id'), page_size)
+    page_obj = paginator.get_page(page)
+    
+    data = {
+        'customers': [{
+            'id': kh.id,
+            'ma': kh.makhachhang,
+            'ten': kh.tenkhachhang,
+            'sdt': kh.sdt or '',
+            'email': kh.email or '',
+            'diachi': kh.diachi or '',
+            'phan_loai': kh.phanloai,
+            'du_no': float(kh.du_no_hien_tai),
+            'han_muc_no': float(kh.han_muc_no),
+            'mst': kh.mst or '',
+            'ghichu': kh.ghichu or '',
+        } for kh in page_obj],
+        'pagination': {
+            'total': paginator.count,
+            'page': page,
+            'total_pages': paginator.num_pages,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+            'page_size': page_size,
+        }
+    }
+    
+    return JsonResponse(data)

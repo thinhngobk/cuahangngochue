@@ -90,8 +90,19 @@
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-rose-200">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
-                    <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Ngày hoàn</label>
-                    <input type="date" x-model="filters.date" @change="fetchInvoices()"
+                    <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Tìm mã HĐ</label>
+                    <input type="text" x-model="filters.invoice_code" @input.debounce.300ms="fetchInvoices()"
+                        placeholder="Tìm mã..."
+                        class="w-full px-3 py-2 border-2 border-rose-100 rounded-xl focus:border-rose-500 outline-none text-sm font-bold">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Từ ngày</label>
+                    <input type="date" x-model="filters.from_date" @change="fetchInvoices()"
+                        class="w-full px-3 py-2 border-2 border-rose-100 rounded-xl focus:border-rose-500 outline-none text-sm font-bold">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Đến ngày</label>
+                    <input type="date" x-model="filters.to_date" @change="fetchInvoices()"
                         class="w-full px-3 py-2 border-2 border-rose-100 rounded-xl focus:border-rose-500 outline-none text-sm font-bold">
                 </div>
                 <div>
@@ -407,9 +418,11 @@
                 showModal: false,
                 detail: {},
                 filters: {
-                    date: '',
                     customer: '',
-                    status: 'all'
+                    status: 'all',
+                    invoice_code: '',
+                    from_date: '',
+                    to_date: ''
                 },
                 meta: {
                     current_page: 1,
@@ -442,10 +455,12 @@
                     this.loading = true;
                     try {
                         const params = new URLSearchParams({
-                            page: page,
-                            date: this.filters.date,
                             customer: this.filters.customer,
-                            status: this.filters.status
+                            status: this.filters.status,
+                            invoice_code: this.filters.invoice_code,
+                            from_date: this.filters.from_date,
+                            to_date: this.filters.to_date,
+                            page: this.currentPage
                         });
 
                         const res = await fetch(`/api/invoices-hoan/?${params}`);
@@ -469,8 +484,12 @@
                 },
 
                 resetFilters() {
-                    this.filters = { date: '', customer: '', status: 'all' };
-                    this.fetchInvoices(1);
+                    this.filters.customer = '';
+                    this.filters.status = 'all';
+                    this.filters.invoice_code = '';
+                    this.filters.from_date = '';
+                    this.filters.to_date = '';
+                    this.fetchInvoices();
                 },
 
                 async viewDetail(ma_hd) {

@@ -8,9 +8,9 @@ ALLOWED_HOSTS = []
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = 'pos'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_COOKIE_AGE = 3600
+SESSION_SAVE_EVERY_REQUEST = True       # Làm mới liên tục khi dùng
+SESSION_COOKIE_AGE = 10000     
 INSTALLED_APPS = [
-    "unfold",  # Bắt buộc nằm trên cùng
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",

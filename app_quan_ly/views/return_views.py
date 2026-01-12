@@ -13,7 +13,8 @@ from app_quan_ly.models import (
     HoaDonHoan, ChiTietHoaDonHoan, SanPham, SoCaiCongNo
 )
 from datetime import datetime, date
-
+from django.db.models import Q
+from unidecode import unidecode
 @transaction.atomic
 def save_invoice_hoan(request):
     """API lưu đơn hoàn hàng"""
@@ -105,21 +106,35 @@ def save_invoice_hoan(request):
 def get_invoices_hoan_api(request):
     """API lấy danh sách đơn hoàn hàng"""
     try:
-        ngay_loc = request.GET.get('date')
-        ten_khach = request.GET.get('customer')
+        search_query = request.GET.get('customer', '').strip()
         tt_don = request.GET.get('status')
+        tu_ngay = request.GET.get('from_date', '').strip()
+        den_ngay = request.GET.get('to_date', '').strip()
+        invoice_code = request.GET.get('invoice_code', '').strip()
         page_number = request.GET.get('page', 1)
         page_size = 15
 
         hhs = HoaDonHoan.objects.select_related('khachhang').all().order_by('-ngaylap')
 
-        if ngay_loc:
-            hhs = hhs.filter(ngaylap__date=ngay_loc)
-        if ten_khach:
-            hhs = hhs.filter(khachhang__tenkhachhang__icontains=ten_khach)
+        # ✅ LỌC THEO KHOẢNG NGÀY
+        if tu_ngay and den_ngay:
+            hhs = hhs.filter(ngaylap__range=[tu_ngay, den_ngay])
+        elif tu_ngay:
+            hhs = hhs.filter(ngaylap__gte=tu_ngay)
+        elif den_ngay:
+            hhs = hhs.filter(ngaylap__lte=den_ngay)
         if tt_don and tt_don != 'all':
             hhs = hhs.filter(trangthaiduyet=tt_don)
-
+        if search_query:
+            q_nd = unidecode(search_query).lower()
+            hhs = hhs.filter(
+                Q(mahoadonhoan__icontains=search_query) |
+                Q(khachhang__tenkhachhangkhongdau__icontains=q_nd) |
+                Q(khachhang__sdt__icontains=search_query) |
+                Q(khachhang__makhachhang__iexact=search_query)
+            )
+        if invoice_code:
+            hhs = hhs.filter(mahoadonhoan__icontains=invoice_code)
         paginator = Paginator(hhs, page_size)
         page_obj = paginator.get_page(page_number)
 
@@ -302,8 +317,7 @@ def edit_invoice_hoan(request, hh_id):
     """API sửa đơn hoàn PENDING"""
     if request.method != "POST":
         return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
-    if not items_data or len(items_data) == 0:
-        return JsonResponse({'status': 'error', 'message': 'Giỏ hàng trống, không thể lưu!'}, status=400)
+
     try:
         hh = HoaDonHoan.objects.select_for_update().get(id=hh_id)
         
@@ -313,7 +327,8 @@ def edit_invoice_hoan(request, hh_id):
         
         data = json.loads(request.body)
         items_data = data.get('items', [])
-        
+        if not items_data or len(items_data) == 0:
+             return JsonResponse({'status': 'error', 'message': 'Giỏ hàng trống, không thể lưu!'}, status=400)
         # Tính tổng tiền
         tong_tien_hang = Decimal('0')
         for item in items_data:
