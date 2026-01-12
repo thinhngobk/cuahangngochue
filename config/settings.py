@@ -54,11 +54,11 @@ TEMPLATES = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'invoice_application',
-        'USER': 'postgres',
-        'PASSWORD': '210219',
-        'HOST': 'localhost',
-        'PORT': '5433',
+        'NAME': 'postgres',
+        'USER': 'postgres.ahfuseqhicdwmmkrpzpq',
+        'PASSWORD': 'Baochaugreen@2024',
+        'HOST': 'aws-1-ap-southeast-1.pooler.supabase.com',
+        'PORT': '6543',
     }
 }
 STATIC_URL = 'static/'
