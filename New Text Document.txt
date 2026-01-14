@@ -34,3 +34,10 @@ admin1    → admin123
 git init
 git config user.name "baochaugreen2024"
 git config user.email "baochaugreen@gmail.com"
+
+DB_HOST aws-1-ap-southeast-1.pooler.supabase.com
+DB_NAME postgres
+DB_PASSWORD Baochaugreen@2024
+DB_PORT 5432
+DB_USER postgres.ahfuseqhicdwmmkrpzpq
+SECRET_KEY django-insecure-&h-k7#v@l*6m^q!2p$9z_x+5u(w1r8-j4y0=b3t#i&f%c9s!@
