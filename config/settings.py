@@ -57,7 +57,8 @@ DATABASES = {
     'default': dj_database_url.config(
         # Render sẽ cung cấp biến này, nếu không có nó sẽ dùng các biến rời bên dưới
         default=os.getenv('DATABASE_URL'),
-        conn_max_age=600
+        conn_max_age=600,
+        conn_health_checks=True,
     )
 }
 
