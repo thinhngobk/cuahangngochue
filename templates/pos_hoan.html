@@ -1,34 +1,28 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block extra_css %}
-<head>
-    <meta charset="UTF-8">
-    <title>Hệ thống Hoàn Hàng | Gemini POS</title>
-    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        [x-cloak] {
-            display: none !important;
-        }
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
 
-        .font-inter-num {
-            font-family: 'Inter', sans-serif !important;
-            font-weight: 800 !important;
-            letter-spacing: 0.02em !important;
-        }
+    .font-inter-num {
+        font-family: 'Inter', sans-serif !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.02em !important;
+    }
 
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
 
-        input[type=number] {
-            -moz-appearance: textfield;
-        }
-    </style>
-</head>
+    input[type=number] {
+        -moz-appearance: textfield;
+    }
+</style>
+
 {% endblock %}
 {% block content %}
 <script type="application/json" id="customers-data">{{ customers_json|safe }}</script>

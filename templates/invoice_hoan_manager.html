@@ -1,12 +1,9 @@
-<!DOCTYPE html>
-<html lang="vi">
-
+{% extends 'base.html' %}
+{% load static %}
+{% block extra_css %}
 <head>
     <meta charset="UTF-8">
     <title>Lịch Sử Đơn Hoàn Hàng | Gemini POS</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         [x-cloak] {
             display: none !important;
@@ -40,51 +37,181 @@
         }
     </style>
 </head>
-
+{% endblock %}
+{% block content %}
 <body class="bg-slate-100" x-data="invoiceHoanManager()" x-cloak>
     {% csrf_token %}
+    <script>
+        window.formatVND = function (value) {
+            if (!value && value !== 0) return '0';
+            return new Intl.NumberFormat('en-US').format(value);
+        };
 
-    <!-- NAVBAR -->
-    <nav class="bg-gradient-to-r from-rose-600 to-pink-600 border-b border-rose-700 p-4 mb-4 shadow-lg">
-        <div class="max-w-[98%] mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-4">
-                <h1 class="text-2xl font-black text-white tracking-tighter">
-                    <span class="opacity-90">GEMINI</span> HOÀN HÀNG
-                </h1>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('invoiceHoanManager', () => ({
+                today: new Date().toLocaleDateString('vi-VN'),
+                invoices: [],
+                loading: false,
+                showModal: false,
+                detail: {},
+                filters: {
+                    customer: '',
+                    status: 'all',
+                    invoice_code: '',
+                    from_date: '',
+                    to_date: ''
+                },
+                meta: {
+                    current_page: 1,
+                    total_pages: 1,
+                    has_next: false,
+                    has_previous: false,
+                    total_items: 0
+                },
 
-                <a href="/pos/"
-                    class="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-2xl font-black text-xs uppercase transition-all duration-300 backdrop-blur-sm">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
-                        </path>
-                    </svg>
-                    Về POS Bán
-                </a>
+                init() {
+                    this.fetchInvoices();
 
-                <a href="/pos-hoan/"
-                    class="flex items-center gap-2 px-4 py-2 bg-white/90 hover:bg-white text-rose-700 rounded-2xl font-black text-xs uppercase transition-all duration-300 shadow-md">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                    Tạo Đơn Hoàn Mới
-                </a>
+                    // ✅ Kiểm tra nếu có tham số copy trong URL
+                    const copyId = new URLSearchParams(window.location.search).get('copy');
+                    if (copyId) {
+                        fetch(`/api/copy-invoice-hoan/${copyId}/`)
+                            .then(r => r.json())
+                            .then(d => {
+                                if (d.status === 'success') {
+                                    this.items = d.data.items;
+                                    this.selectedCustomer = d.data.khachhang_id;
+                                    this.noteInvoice = d.data.ghichu_don;
+                                    alert(`Đã sao chép từ ${d.data.ma_goc}`);
+                                }
+                            });
+                    }
+                },
 
-                <a href="/hoa-don/"
-                    class="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-2xl font-black text-xs uppercase transition-all duration-300 backdrop-blur-sm">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
-                        </path>
-                    </svg>
-                    Đơn Bán Hàng
-                </a>
-            </div>
-            <div class="text-white/90 text-sm font-bold" x-text="today"></div>
-        </div>
-    </nav>
+                async fetchInvoices(page = 1) {
+                    this.loading = true;
+                    try {
+                        const params = new URLSearchParams({
+                            customer: this.filters.customer,
+                            status: this.filters.status,
+                            invoice_code: this.filters.invoice_code,
+                            from_date: this.filters.from_date,
+                            to_date: this.filters.to_date,
+                            page: this.currentPage
+                        });
 
+                        const res = await fetch(`/api/invoices-hoan/?${params}`);
+                        const result = await res.json();
+
+                        if (result.status === 'success') {
+                            this.invoices = result.data;
+                            this.meta = result.meta;
+                        }
+                    } catch (e) {
+                        alert('Lỗi tải dữ liệu: ' + e.message);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                changePage(page) {
+                    if (page >= 1 && page <= this.meta.total_pages) {
+                        this.fetchInvoices(page);
+                    }
+                },
+
+                resetFilters() {
+                    this.filters.customer = '';
+                    this.filters.status = 'all';
+                    this.filters.invoice_code = '';
+                    this.filters.from_date = '';
+                    this.filters.to_date = '';
+                    this.fetchInvoices();
+                },
+
+                async viewDetail(ma_hd) {
+                    try {
+                        const res = await fetch(`/api/invoice-hoan-detail/${ma_hd}/`);
+                        const result = await res.json();
+
+                        if (result.status === 'success') {
+                            this.detail = result.data;
+                            this.showModal = true;
+                        }
+                    } catch (e) {
+                        alert('Lỗi tải chi tiết: ' + e.message);
+                    }
+                },
+
+                async editInvoice(ma_hd) {
+                    // Chuyển đơn giản - không cần params phức tạp
+                    window.location.href = `/pos-hoan/?edit=${ma_hd}`;
+                },
+
+                async approveInvoice(id, ma_hd) {
+                    if (!confirm(`Xác nhận DUYỆT đơn hoàn ${ma_hd}?\n\n✅ Sẽ cộng lại kho\n✅ Sẽ giảm nợ khách`)) return;
+
+                    try {
+                        const res = await fetch(`/api/approve-invoice-hoan/${id}/`, {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': this.getCSRFToken() }
+                        });
+                        const result = await res.json();
+
+                        if (result.status === 'success') {
+                            alert(result.message);
+                            this.fetchInvoices(this.meta.current_page);
+                        } else {
+                            alert('Lỗi: ' + result.message);
+                        }
+                    } catch (e) {
+                        alert('Lỗi kết nối: ' + e.message);
+                    }
+                },
+
+                printInvoice(ma_hd) {
+                    this.viewDetail(ma_hd).then(() => {
+                        setTimeout(() => window.print(), 500);
+                    });
+                },
+
+                copyInvoice(id) {
+                    window.location.href = `/pos-hoan/?copy=${id}`;
+                },
+
+                async cancelInvoice(id, ma_hd) {
+                    if (!confirm(`Xác nhận HỦY đơn hoàn ${ma_hd}?\n\n⚠️ Nếu đã duyệt:\n- Sẽ trừ lại kho\n- Sẽ tăng lại nợ khách`)) return;
+
+                    try {
+                        const res = await fetch(`/api/cancel-invoice-hoan/${id}/`, {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': this.getCSRFToken() }
+                        });
+                        const result = await res.json();
+
+                        if (result.status === 'success') {
+                            alert(result.message);
+                            this.fetchInvoices(this.meta.current_page);
+                            if (this.showModal) this.showModal = false;
+                        } else {
+                            alert('Lỗi: ' + result.message);
+                        }
+                    } catch (e) {
+                        alert('Lỗi kết nối: ' + e.message);
+                    }
+                },
+
+                formatVND(value) {
+                    return window.formatVND(value);
+                },
+
+                getCSRFToken() {
+                    return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                        document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+                }
+            }));
+        });
+    </script>
     <!-- FILTER BAR -->
     <div class="max-w-[98%] mx-auto mb-4">
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-rose-200">
@@ -403,178 +530,6 @@
             </div>
         </div>
     </div>
-
-    <script>
-        window.formatVND = function (value) {
-            if (!value && value !== 0) return '0';
-            return new Intl.NumberFormat('en-US').format(value);
-        };
-
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('invoiceHoanManager', () => ({
-                today: new Date().toLocaleDateString('vi-VN'),
-                invoices: [],
-                loading: false,
-                showModal: false,
-                detail: {},
-                filters: {
-                    customer: '',
-                    status: 'all',
-                    invoice_code: '',
-                    from_date: '',
-                    to_date: ''
-                },
-                meta: {
-                    current_page: 1,
-                    total_pages: 1,
-                    has_next: false,
-                    has_previous: false,
-                    total_items: 0
-                },
-
-                init() {
-                    this.fetchInvoices();
-
-                    // ✅ Kiểm tra nếu có tham số copy trong URL
-                    const copyId = new URLSearchParams(window.location.search).get('copy');
-                    if (copyId) {
-                        fetch(`/api/copy-invoice-hoan/${copyId}/`)
-                            .then(r => r.json())
-                            .then(d => {
-                                if (d.status === 'success') {
-                                    this.items = d.data.items;
-                                    this.selectedCustomer = d.data.khachhang_id;
-                                    this.noteInvoice = d.data.ghichu_don;
-                                    alert(`Đã sao chép từ ${d.data.ma_goc}`);
-                                }
-                            });
-                    }
-                },
-
-                async fetchInvoices(page = 1) {
-                    this.loading = true;
-                    try {
-                        const params = new URLSearchParams({
-                            customer: this.filters.customer,
-                            status: this.filters.status,
-                            invoice_code: this.filters.invoice_code,
-                            from_date: this.filters.from_date,
-                            to_date: this.filters.to_date,
-                            page: this.currentPage
-                        });
-
-                        const res = await fetch(`/api/invoices-hoan/?${params}`);
-                        const result = await res.json();
-
-                        if (result.status === 'success') {
-                            this.invoices = result.data;
-                            this.meta = result.meta;
-                        }
-                    } catch (e) {
-                        alert('Lỗi tải dữ liệu: ' + e.message);
-                    } finally {
-                        this.loading = false;
-                    }
-                },
-
-                changePage(page) {
-                    if (page >= 1 && page <= this.meta.total_pages) {
-                        this.fetchInvoices(page);
-                    }
-                },
-
-                resetFilters() {
-                    this.filters.customer = '';
-                    this.filters.status = 'all';
-                    this.filters.invoice_code = '';
-                    this.filters.from_date = '';
-                    this.filters.to_date = '';
-                    this.fetchInvoices();
-                },
-
-                async viewDetail(ma_hd) {
-                    try {
-                        const res = await fetch(`/api/invoice-hoan-detail/${ma_hd}/`);
-                        const result = await res.json();
-
-                        if (result.status === 'success') {
-                            this.detail = result.data;
-                            this.showModal = true;
-                        }
-                    } catch (e) {
-                        alert('Lỗi tải chi tiết: ' + e.message);
-                    }
-                },
-
-                async editInvoice(ma_hd) {
-                    // Chuyển đơn giản - không cần params phức tạp
-                    window.location.href = `/pos-hoan/?edit=${ma_hd}`;
-                },
-
-                async approveInvoice(id, ma_hd) {
-                    if (!confirm(`Xác nhận DUYỆT đơn hoàn ${ma_hd}?\n\n✅ Sẽ cộng lại kho\n✅ Sẽ giảm nợ khách`)) return;
-
-                    try {
-                        const res = await fetch(`/api/approve-invoice-hoan/${id}/`, {
-                            method: 'POST',
-                            headers: { 'X-CSRFToken': this.getCSRFToken() }
-                        });
-                        const result = await res.json();
-
-                        if (result.status === 'success') {
-                            alert(result.message);
-                            this.fetchInvoices(this.meta.current_page);
-                        } else {
-                            alert('Lỗi: ' + result.message);
-                        }
-                    } catch (e) {
-                        alert('Lỗi kết nối: ' + e.message);
-                    }
-                },
-
-                printInvoice(ma_hd) {
-                    this.viewDetail(ma_hd).then(() => {
-                        setTimeout(() => window.print(), 500);
-                    });
-                },
-
-                copyInvoice(id) {
-                    window.location.href = `/pos-hoan/?copy=${id}`;
-                },
-
-                async cancelInvoice(id, ma_hd) {
-                    if (!confirm(`Xác nhận HỦY đơn hoàn ${ma_hd}?\n\n⚠️ Nếu đã duyệt:\n- Sẽ trừ lại kho\n- Sẽ tăng lại nợ khách`)) return;
-
-                    try {
-                        const res = await fetch(`/api/cancel-invoice-hoan/${id}/`, {
-                            method: 'POST',
-                            headers: { 'X-CSRFToken': this.getCSRFToken() }
-                        });
-                        const result = await res.json();
-
-                        if (result.status === 'success') {
-                            alert(result.message);
-                            this.fetchInvoices(this.meta.current_page);
-                            if (this.showModal) this.showModal = false;
-                        } else {
-                            alert('Lỗi: ' + result.message);
-                        }
-                    } catch (e) {
-                        alert('Lỗi kết nối: ' + e.message);
-                    }
-                },
-
-                formatVND(value) {
-                    return window.formatVND(value);
-                },
-
-                getCSRFToken() {
-                    return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                        document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
-                }
-            }));
-        });
-    </script>
+    
 </body>
-
-</html>
+{% endblock %}

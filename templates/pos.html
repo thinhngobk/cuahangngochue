@@ -1,54 +1,47 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block extra_css %}
+<meta charset="UTF-8">
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
 
-<head>
-    <meta charset="UTF-8">
-    <title>Hệ thống POS Bán Hàng | Gemini POS</title>
-    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        [x-cloak] {
-            display: none !important;
-        }
+    .font-inter-num {
+        font-family: 'Inter', sans-serif !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.02em !important;
+    }
 
-        .font-inter-num {
-            font-family: 'Inter', sans-serif !important;
-            font-weight: 800 !important;
-            letter-spacing: 0.02em !important;
-        }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
 
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
+    input[type=number] {
+        -moz-appearance: textfield;
+    }
 
-        input[type=number] {
-            -moz-appearance: textfield;
-        }
+    /* Custom scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
 
-        /* Custom scrollbar */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 10px;
+    }
 
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 10px;
-        }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
 
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-    </style>
-</head>
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+</style>
 {% endblock %}
 {% block content %}
 

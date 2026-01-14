@@ -1,13 +1,180 @@
-<!DOCTYPE html>
-<html lang="vi">
-
+{% extends 'base.html' %}
+{% load static %}
+{% block extra_css %}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý Hóa đơn</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
+{% endblock %}
+{% block content %}
+<script>
+    function invoiceManager() {
+        return {
+            invoices: [],
+            showModal: false,
+            currentPage: 1,
+            totalPages: 1,
+            selectedInvoice: {
+                id: null,
+                ma_hd: '',
+                items: [],
+                tong: 0,
+                tam_tinh: 0,
+                ck_tong_pt: 0,
+                ghichu: '',
+                trang_thai_don: '',
+                ngay: ''
+            },
+            searchCustomer: '',
+            filterStatus: 'all',
+            searchInvoiceCode: '',
+            filterFromDate: '',
+            filterToDate: '',
+            formatVND(n) {
+                let num = parseFloat(n) || 0;
+                return num.toLocaleString('en-US');
+            },
+
+            getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            },
+
+            async fetchInvoices(page = 1) {
+                this.currentPage = page;
+                const params = new URLSearchParams({
+                    customer: this.searchCustomer,
+                    status: this.filterStatus,
+                    invoice_code: this.searchInvoiceCode,
+                    from_date: this.filterFromDate,
+                    to_date: this.filterToDate,
+                    page: this.currentPage
+                });
+
+                try {
+                    const res = await fetch(`/api/get-invoices/?${params.toString()}`);
+                    const result = await res.json();
+                    if (result.status === 'success') {
+                        this.invoices = result.data;
+                        this.totalPages = result.meta.total_pages || 1;
+                    }
+                } catch (error) {
+                    console.error("Lỗi lấy dữ liệu:", error);
+                }
+            },
+
+            nextPage() {
+                if (this.currentPage < this.totalPages) {
+                    this.fetchInvoices(this.currentPage + 1);
+                }
+            },
+
+            prevPage() {
+                if (this.currentPage > 1) {
+                    this.fetchInvoices(this.currentPage - 1);
+                }
+            },
+
+            async viewDetail(ma_hd) {
+                const res = await fetch(`/api/get-invoice-detail/${ma_hd}/`);
+                const result = await res.json();
+                if (result.status === 'success') {
+                    this.selectedInvoice = result.data;
+                    this.showModal = true;
+                }
+            },
+
+            async approveInvoice(ma_hd) {
+                if (!confirm("Xác nhận duyệt đơn và ghi sổ nợ?")) return;
+
+                const res = await fetch(`/approve-invoice/${ma_hd}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': this.getCookie('csrftoken'),
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    alert('Đã duyệt đơn thành công!');
+                    this.showModal = false;
+                    await this.fetchInvoices();
+                } else {
+                    alert('Lỗi: ' + result.message);
+                }
+            },
+
+            async cancelInvoice(ma_hd) {
+                if (!confirm('Xác nhận HỦY đơn hàng này? Hành động không thể hoàn tác!')) return;
+
+                const res = await fetch(`/cancel-invoice/${ma_hd}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': this.getCookie('csrftoken'),
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    alert('Đã hủy đơn!');
+                    this.showModal = false;
+                    await this.fetchInvoices();
+                } else {
+                    alert('Lỗi: ' + result.message);
+                }
+            },
+
+            editInvoice(ma_hd) {
+                fetch(`/api/get-invoice-for-edit/${ma_hd}/`)
+                    .then(res => res.json())
+                    .then(result => {
+                        if (result.status === 'success') {
+                            localStorage.setItem('edit_invoice_data', JSON.stringify(result.data));
+                            window.location.href = '/pos/';
+                        } else {
+                            alert(result.message);
+                        }
+                    })
+                    .catch(error => {
+                        alert('Lỗi: ' + error);
+                    });
+            },
+            copyInvoice(id) {
+                window.location.href = `/pos/?copy=${id}`;
+            },
+
+            printInvoice(ma_hd) {
+                window.open(`/print-invoice/${ma_hd}/`, '_blank');
+            },
+
+            resetFilters() {    
+                this.searchCustomer = '';
+                this.filterStatus = 'all';
+                this.searchInvoiceCode = '';
+                this.filterFromDate = '';
+                this.filterToDate = '';
+                this.fetchInvoices();
+            },
+
+            init() {
+                this.fetchInvoices();
+            }
+        }
+    }
+</script>
 
 <body class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 font-sans antialiased min-h-screen"
     x-data="invoiceManager()">
@@ -537,172 +704,5 @@
         }
     </style>
 </body>
-<script>
-    function invoiceManager() {
-        return {
-            invoices: [],
-            showModal: false,
-            currentPage: 1,
-            totalPages: 1,
-            selectedInvoice: {
-                id: null,
-                ma_hd: '',
-                items: [],
-                tong: 0,
-                tam_tinh: 0,
-                ck_tong_pt: 0,
-                ghichu: '',
-                trang_thai_don: '',
-                ngay: ''
-            },
-            searchCustomer: '',
-            filterStatus: 'all',
-            searchInvoiceCode: '',
-            filterFromDate: '',
-            filterToDate: '',
-            formatVND(n) {
-                let num = parseFloat(n) || 0;
-                return num.toLocaleString('en-US');
-            },
 
-            getCookie(name) {
-                let cookieValue = null;
-                if (document.cookie && document.cookie !== '') {
-                    const cookies = document.cookie.split(';');
-                    for (let i = 0; i < cookies.length; i++) {
-                        const cookie = cookies[i].trim();
-                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                            break;
-                        }
-                    }
-                }
-                return cookieValue;
-            },
-
-            async fetchInvoices(page = 1) {
-                this.currentPage = page;
-                const params = new URLSearchParams({
-                    customer: this.searchCustomer,
-                    status: this.filterStatus,
-                    invoice_code: this.searchInvoiceCode,
-                    from_date: this.filterFromDate,
-                    to_date: this.filterToDate,
-                    page: this.currentPage
-                });
-
-                try {
-                    const res = await fetch(`/api/get-invoices/?${params.toString()}`);
-                    const result = await res.json();
-                    if (result.status === 'success') {
-                        this.invoices = result.data;
-                        this.totalPages = result.meta.total_pages || 1;
-                    }
-                } catch (error) {
-                    console.error("Lỗi lấy dữ liệu:", error);
-                }
-            },
-
-            nextPage() {
-                if (this.currentPage < this.totalPages) {
-                    this.fetchInvoices(this.currentPage + 1);
-                }
-            },
-
-            prevPage() {
-                if (this.currentPage > 1) {
-                    this.fetchInvoices(this.currentPage - 1);
-                }
-            },
-
-            async viewDetail(ma_hd) {
-                const res = await fetch(`/api/get-invoice-detail/${ma_hd}/`);
-                const result = await res.json();
-                if (result.status === 'success') {
-                    this.selectedInvoice = result.data;
-                    this.showModal = true;
-                }
-            },
-
-            async approveInvoice(ma_hd) {
-                if (!confirm("Xác nhận duyệt đơn và ghi sổ nợ?")) return;
-
-                const res = await fetch(`/approve-invoice/${ma_hd}/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': this.getCookie('csrftoken'),
-                        'Content-Type': 'application/json'
-                    }
-                });
-                const result = await res.json();
-
-                if (result.status === 'success') {
-                    alert('Đã duyệt đơn thành công!');
-                    this.showModal = false;
-                    await this.fetchInvoices();
-                } else {
-                    alert('Lỗi: ' + result.message);
-                }
-            },
-
-            async cancelInvoice(ma_hd) {
-                if (!confirm('Xác nhận HỦY đơn hàng này? Hành động không thể hoàn tác!')) return;
-
-                const res = await fetch(`/cancel-invoice/${ma_hd}/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': this.getCookie('csrftoken'),
-                        'Content-Type': 'application/json'
-                    }
-                });
-                const result = await res.json();
-
-                if (result.status === 'success') {
-                    alert('Đã hủy đơn!');
-                    this.showModal = false;
-                    await this.fetchInvoices();
-                } else {
-                    alert('Lỗi: ' + result.message);
-                }
-            },
-
-            editInvoice(ma_hd) {
-                fetch(`/api/get-invoice-for-edit/${ma_hd}/`)
-                    .then(res => res.json())
-                    .then(result => {
-                        if (result.status === 'success') {
-                            localStorage.setItem('edit_invoice_data', JSON.stringify(result.data));
-                            window.location.href = '/pos/';
-                        } else {
-                            alert(result.message);
-                        }
-                    })
-                    .catch(error => {
-                        alert('Lỗi: ' + error);
-                    });
-            },
-            copyInvoice(id) {
-                window.location.href = `/pos/?copy=${id}`;
-            },
-
-            printInvoice(ma_hd) {
-                window.open(`/print-invoice/${ma_hd}/`, '_blank');
-            },
-
-            resetFilters() {    
-                this.searchCustomer = '';
-                this.filterStatus = 'all';
-                this.searchInvoiceCode = '';
-                this.filterFromDate = '';
-                this.filterToDate = '';
-                this.fetchInvoices();
-            },
-
-            init() {
-                this.fetchInvoices();
-            }
-        }
-    }
-</script>
-
-</html>
+{% endblock %}
