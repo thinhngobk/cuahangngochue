@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-
+import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
@@ -54,14 +54,22 @@ TEMPLATES = [
 # Sau này nâng lên PostgreSQL chỉ cần sửa đoạn này
 # settings.py
 DATABASES = {
-    'default': {
+    'default': dj_database_url.config(
+        # Render sẽ cung cấp biến này, nếu không có nó sẽ dùng các biến rời bên dưới
+        default=os.getenv('DATABASE_URL'),
+        conn_max_age=600
+    )
+}
+
+# Nếu bạn vẫn muốn hỗ trợ cấu hình rời khi chạy local:
+if not DATABASES['default']:
+    DATABASES['default'] = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('DB_NAME'),
         'USER': os.getenv('DB_USER'),
         'PASSWORD': os.getenv('DB_PASSWORD'),
         'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT', '6543'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
-}
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
