@@ -100,9 +100,6 @@ if DATABASE_URL:
             default=DATABASE_URL,
             conn_max_age=600,
             conn_health_checks=True,
-            options={
-                'connect_timeout': 10,  # ← THÊM: Timeout nhanh hơn
-            }
         )
     }
 else:
@@ -114,7 +111,7 @@ else:
             'PASSWORD': os.getenv('DB_PASSWORD', '210219'),
             'HOST': os.getenv('DB_HOST', '127.0.0.1'),
             'PORT': os.getenv('DB_PORT', '5433'),
-            'CONN_MAX_AGE': 600,  # ← THÊM
+            'CONN_MAX_AGE': 600,
         }
     }
 
