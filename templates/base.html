@@ -7,9 +7,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Gemini POS{% endblock %}</title>
 
-    <script src="{% static 'css/tailwind.js' %}"></script>
-    <script src="{% static 'js/alpine.min.js' %}" defer></script>
-    <script src="{% static 'js/htmx.min.js' %}" defer></script>
+        <!-- Preload critical resources -->
+        <link rel="preload" href="{% static 'js/htmx.min.js' %}" as="script">
+        <link rel="preload" href="{% static 'js/alpine.min.js' %}" as="script">
+        <link rel="preload" href="{% static 'css/tailwind.js' %}" as="script">
+
+        <script src="{% static 'css/tailwind.js' %}"></script>
+        <script src="{% static 'js/alpine.min.js' %}" defer></script>
+        <script src="{% static 'js/htmx.min.js' %}" defer></script>
 
 
     <style>

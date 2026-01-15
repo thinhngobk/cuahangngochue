@@ -60,7 +60,13 @@ TEMPLATES = [
         },
     },
 ]
-
+# Whitenoise optimization
+WHITENOISE_AUTOREFRESH = DEBUG
+WHITENOISE_USE_FINDERS = DEBUG
+WHITENOISE_MANIFEST_STRICT = False
+WHITENOISE_ALLOW_ALL_ORIGINS = True
+WHITENOISE_SKIP_COMPRESS_EXTENSIONS = []  # Compress all files
+WHITENOISE_MAX_AGE = 31536000  # Cache for 1 year
 # Sau này nâng lên PostgreSQL chỉ cần sửa đoạn này
 # settings.py
 DATABASE_URL = os.getenv('DATABASE_URL')
