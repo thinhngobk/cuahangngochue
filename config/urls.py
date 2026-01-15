@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 import os
 from app_quan_ly import views 
 from django.conf import settings
@@ -73,4 +73,11 @@ urlpatterns = [
     
 ]
 if settings.DEBUG:
+    # Debug toolbar
+    import debug_toolbar
+    urlpatterns = [
+        path('__debug__/', include(debug_toolbar.urls)),
+    ] + urlpatterns
+    
+    # Static files
     urlpatterns += static(settings.STATIC_URL, document_root=os.path.join(settings.BASE_DIR, 'static'))
