@@ -1,8 +1,9 @@
+import time
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from app_quan_ly.models import KhachHang, SoCaiCongNo
 import json
-
+from django.db import models
 @login_required
 def index_view(request):
     """Trang chủ Dashboard"""
@@ -11,32 +12,93 @@ def index_view(request):
 
 @login_required
 def pos_view(request):
-    khach_hang_list = KhachHang.objects.all().order_by('-id')
+    start = time.time()
+    print(f"\n{'='*60}")
+    print(f"[POS View] Started")
     
+    # Query customers với prefetch
+    t1 = time.time()
+    khach_hang_list = KhachHang.objects.prefetch_related(
+        models.Prefetch(
+            'so_no_rieng',  # ← Dùng related_name
+            queryset=SoCaiCongNo.objects.order_by('-ngay_ghi_so', '-id')[:1],
+            to_attr='so_no_latest'
+        )
+    ).order_by('-id')
+    count = khach_hang_list.count()
+    print(f"✓ Query customers: {(time.time() - t1)*1000:.0f}ms ({count} records)")
+    
+    # Build customers list
+    t2 = time.time()
     customers = []
     for kh in khach_hang_list:
+        # Lấy dư nợ từ prefetch
+        if hasattr(kh, 'so_no_latest') and kh.so_no_latest:
+            du_no = float(kh.so_no_latest[0].du_no_tuc_thoi)
+        else:
+            du_no = float(kh.no_dau_ky)
+        
         customers.append({
             'id': kh.id,
             'ten': kh.tenkhachhang,
             'sdt': kh.sdt or '',
-            'tong_no': float(kh.du_no_hien_tai)
+            'tong_no': du_no
         })
+    print(f"✓ Build list: {(time.time() - t2)*1000:.0f}ms")
     
+    # Session cleanup
+    t3 = time.time()
     if 'edit_invoice_data' in request.session:
         del request.session['edit_invoice_data']
+    print(f"✓ Session cleanup: {(time.time() - t3)*1000:.0f}ms")
+    
+    # JSON serialize
+    t4 = time.time()
+    customers_json = json.dumps(customers)
+    print(f"✓ JSON serialize: {(time.time() - t4)*1000:.0f}ms ({len(customers_json)} chars)")
     
     context = {
-        'customers_json': json.dumps(customers)
+        'customers_json': customers_json
     }
     
-    return render(request, 'pos.html', context)
-
+    # Render template
+    t5 = time.time()
+    response = render(request, 'pos.html', context)
+    print(f"✓ Template render: {(time.time() - t5)*1000:.0f}ms")
+    
+    total = (time.time() - start) * 1000
+    print(f"⏱  TOTAL TIME: {total:.0f}ms")
+    print(f"{'='*60}\n")
+    
+    return response
+@login_required
 @login_required
 def pos_hoan_view(request):
-    """Trang POS hoàn hàng"""
-    khach_hangs = KhachHang.objects.all().order_by('-id')
-    return render(request, 'pos_hoan.html', {'khach_hangs': khach_hangs})
-
+    khach_hangs = KhachHang.objects.prefetch_related(
+        models.Prefetch(
+            'so_no_rieng',
+            queryset=SoCaiCongNo.objects.order_by('-ngay_ghi_so', '-id')[:1],
+            to_attr='so_no_latest'
+        )
+    ).order_by('-id')
+    
+    customers = []
+    for kh in khach_hangs:
+        if hasattr(kh, 'so_no_latest') and kh.so_no_latest:
+            du_no = float(kh.so_no_latest[0].du_no_tuc_thoi)
+        else:
+            du_no = float(kh.no_dau_ky)
+        
+        customers.append({
+            'id': kh.id,
+            'ten': kh.tenkhachhang,
+            'sdt': kh.sdt or '',
+            'tong_no': du_no
+        })
+    
+    return render(request, 'pos_hoan.html', {
+        'customers_json': json.dumps(customers)
+    })
 
 def invoice_hoan_manager_view(request):
     """Trang lịch sử đơn hoàn"""
@@ -48,7 +110,12 @@ def invoice_manager_view(request):
     return render(request, 'invoice_manager.html')
 @login_required
 def get_products_api(request):
-    products = SanPham.objects.all()
+    products = SanPham.objects.only(
+        'id', 'masanpham', 'barcode', 'tensanpham', 
+        'donvitinh', 'dongiagoc', 'dongiaban', 'tonkho', 
+        'is_active', 'ghichu'
+    ).all()
+    
     data = [{
         'id': p.id,
         'ma': p.masanpham,
@@ -62,24 +129,38 @@ def get_products_api(request):
         'ghichu': p.ghichu
     } for p in products]
     return JsonResponse(data, safe=False)
-
 # API Khách hàng
 @login_required
 def get_customers_api(request):
-    customers = KhachHang.objects.all()
-    data = [{
-        'id': kh.id,
-        'ma': kh.makhachhang,
-        'ten': kh.tenkhachhang,
-        'sdt': kh.sdt,
-        'email': kh.email,
-        'diachi': kh.diachi,
-        'phan_loai': kh.phanloai,
-        'du_no': float(kh.du_no_hien_tai),
-        'han_muc_no': float(kh.han_muc_no),
-        'mst': kh.mst,
-        'ghichu': kh.ghichu
-    } for kh in customers]
+    customers = KhachHang.objects.prefetch_related(
+        models.Prefetch(
+            'so_no_rieng',
+            queryset=SoCaiCongNo.objects.order_by('-ngay_ghi_so', '-id')[:1],
+            to_attr='so_no_latest'
+        )
+    )
+    
+    data = []
+    for kh in customers:
+        if hasattr(kh, 'so_no_latest') and kh.so_no_latest:
+            du_no = float(kh.so_no_latest[0].du_no_tuc_thoi)
+        else:
+            du_no = float(kh.no_dau_ky)
+        
+        data.append({
+            'id': kh.id,
+            'ma': kh.makhachhang,
+            'ten': kh.tenkhachhang,
+            'sdt': kh.sdt,
+            'email': kh.email,
+            'diachi': kh.diachi,
+            'phan_loai': kh.phanloai,
+            'du_no': du_no,
+            'han_muc_no': float(kh.han_muc_no),
+            'mst': kh.mst,
+            'ghichu': kh.ghichu
+        })
+    
     return JsonResponse(data, safe=False)
 def customer_manager(request):
     """Trang quản lý khách hàng"""
