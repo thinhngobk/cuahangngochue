@@ -35,7 +35,7 @@ git init
 git config user.name "baochaugreen2024"
 git config user.email "baochaugreen@gmail.com"
 git add .
-git commit -m "Update database config to use dj_database_url"
+git commit -m ""
 git push origin main
 
 DB_HOST aws-1-ap-southeast-2.pooler.supabase.com

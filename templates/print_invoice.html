@@ -211,6 +211,7 @@
     </style>
 </head>
 {% load invoice_filters %}
+{% load humanize %}
 <body>
     <div class="invoice-container">
         <!-- Header -->
@@ -260,8 +261,8 @@
                     </td>
                     <td class="text-center">{{ item.donvitinh|default:"—" }}</td>
                     <td class="text-center">{{ item.soluong|floatformat:0 }}</td>
-                    <td class="text-right">{{ item.dongiaban|floatformat:0|add_commas }}</td>
-                    <td class="text-right">{{ item.thanhtien|floatformat:0|add_commas }}</td>
+                    <td class="text-right">{{ item.dongiaban|floatformat:0|intcomma }}</td>
+                    <td class="text-right">{{ item.thanhtien|floatformat:0|intcomma }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -271,26 +272,26 @@
         <div class="summary">
             <div class="summary-row">
                 <span>Tạm tính:</span>
-                <span>{{ tam_tinh|floatformat:0|add_commas }} đ</span>
+                <span>{{ tam_tinh|floatformat:0|intcomma }} đ</span>
             </div>
             {% if hoadon.chietkhauchung > 0 %}
             <div class="summary-row">
                 <span>Chiết khấu ({{ hoadon.chietkhauchung }}%):</span>
-                <span>-{{ tien_chiet_khau|floatformat:0|add_commas }} đ</span>
+                <span>-{{ tien_chiet_khau|floatformat:0|intcomma }} đ</span>
             </div>
             {% endif %}
             <div class="summary-row total">
                 <span>TỔNG CỘNG:</span>
-                <span>{{ hoadon.tongtienphaithanhtoan|floatformat:0|add_commas }} đ</span>
+                <span>{{ hoadon.tongtienphaithanhtoan|floatformat:0|intcomma }} đ</span>
             </div>
             {% if hoadon.khachhangungtien > 0 %}
             <div class="summary-row">
                 <span>Khách đã trả:</span>
-                <span>{{ hoadon.khachhangungtien|floatformat:0|add_commas }} đ</span>
+                <span>{{ hoadon.khachhangungtien|floatformat:0|intcomma }} đ</span>
             </div>
             <div class="summary-row">
                 <span>Còn nợ:</span>
-                <span>{{ con_no|floatformat:0|add_commas }} đ</span>
+                <span>{{ con_no|floatformat:0|intcomma }} đ</span>
             </div>
             {% endif %}
         </div>

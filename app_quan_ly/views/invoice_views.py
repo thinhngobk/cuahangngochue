@@ -11,6 +11,7 @@ from django.core.paginator import Paginator
 from app_quan_ly.models import (
     HoaDonBan, ChiTietHoaDonBan, SanPham, PhieuThu, SoCaiCongNo
 )
+from app_quan_ly.templatetags.invoice_filters import number_to_words
 from .helper_views import update_ledger
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, date
@@ -29,7 +30,7 @@ def save_invoice(request):
         items_data = data.get('items', [])
         edit_id = data.get('edit_id')
         
-        is_admin = request.user.has_perm('app_name.approve_hoadonban')
+        is_admin = request.user.is_superuser or request.user.has_perm('app_quan_ly.approve_hoadonban')
         is_approve_request = data.get('admin_approve', False)
         should_approve_now = is_admin and is_approve_request
         
@@ -66,7 +67,7 @@ def save_invoice(request):
                 ngaylap=datetime.strptime(data.get('ngay_lap'), '%Y-%m-%d').date() if data.get('ngay_lap') else date.today(),  # ← THÊM
                 user=request.user
             )
-
+            print(f"DEBUG: Created invoice ma={hd.mahoadonban}, len={len(hd.mahoadonban)}")
         # 2. Lưu chi tiết & Tính tổng tiền
         tong_tien_hang = Decimal('0')
         for item in items_data:
@@ -131,7 +132,7 @@ def save_invoice(request):
         action_msg = 'sửa' if edit_id else 'tạo'
         return JsonResponse({
             'status': 'success', 
-            'ma': hd.mahoadonban,
+            'ma_hd': hd.mahoadonban,
             'message': f'Đã {action_msg} và duyệt đơn hàng' if should_approve_now else f'Đã {action_msg} đơn chờ duyệt'
         })
 
@@ -139,7 +140,11 @@ def save_invoice(request):
         return JsonResponse({'status': 'error', 'message': 'Không tìm thấy hóa đơn'}, status=404)
     except Exception as e:
         import traceback
-        traceback.print_exc()
+        error_detail = traceback.format_exc()
+        print("="*50)
+        print("FULL ERROR:")
+        print(error_detail)
+        print("="*50)
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 def get_invoice_for_edit_api(request, ma_hd):  # ← Đổi từ invoice_id sang ma_hd

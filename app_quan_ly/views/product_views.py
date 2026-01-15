@@ -10,6 +10,7 @@ from django.db.models import Q, Case, When, Value, IntegerField
 from unidecode import unidecode
 from app_quan_ly.models import SanPham
 from django.shortcuts import render
+
 def product_manager(request):
     """Trang quản lý sản phẩm"""
     return render(request, 'product_manager.html')
@@ -80,6 +81,7 @@ def search_san_pham(request):
                 ton: {sp.tonkho}
             }}; 
             searchProdQuery = '{ten_sp_safe}'; 
+            document.getElementById('search-results').innerHTML = '';
             $nextTick(() => $refs.qtyInput?.focus())">
             <div class="flex-1">
                 <div class="font-bold {'text-emerald-900' if is_top else 'text-blue-900'}">{sp.tensanpham} {badge}</div>
@@ -127,11 +129,11 @@ def add_product_fast(request):
                 }, status=400)
             
             # Lấy và xử lý dữ liệu
-            barcode = data.get('barcode', '').strip()
+            barcode = data.get('barcode', '').strip() or ''
             gia_goc = Decimal(str(data.get('gia_goc', 0)))
-            gia_ban = Decimal(str(data.get('gia', 0)))
+            gia_ban = Decimal(str(data.get('gia_ban', 0)))  # ← SỬA: 'gia' thành 'gia_ban'
             donvi = data.get('donvi', 'Cái').strip()
-            tonkho = int(data.get('tonkho', 0))
+            tonkho = int(data.get('ton_kho', 0))  # ← SỬA: 'tonkho' thành 'ton_kho'
             ghichu = data.get('ghichu', '').strip()
             
             # Tạo sản phẩm mới
@@ -149,10 +151,18 @@ def add_product_fast(request):
             
             return JsonResponse({
                 'status': 'success', 
-                'id': sp.id, 
-                'ten': sp.tensanpham,
-                'gia': float(sp.dongiaban),
-                'donvi': sp.donvitinh,
+                'product': {
+                    'id': sp.id,
+                    'ma': sp.masanpham,
+                    'ten': sp.tensanpham,
+                    'barcode': sp.barcode,
+                    'donvi': sp.donvitinh,
+                    'gia_goc': float(sp.dongiagoc),
+                    'gia_ban': float(sp.dongiaban),
+                    'ton_kho': sp.tonkho,
+                    'is_active': sp.is_active,
+                    'ghichu': sp.ghichu
+                },
                 'message': f'Đã thêm sản phẩm: {sp.tensanpham}'
             })
             
@@ -171,3 +181,61 @@ def add_product_fast(request):
         'status': 'error', 
         'message': 'Phương thức không hợp lệ'
     }, status=405)
+def get_products_api(request):
+    """Lấy danh sách tất cả sản phẩm"""
+    products = SanPham.objects.all().order_by('-id')
+    data = [{
+        'id': p.id,
+        'ma': p.masanpham,
+        'ten': p.tensanpham,
+        'barcode': p.barcode or '',
+        'donvi': p.donvitinh,
+        'gia_goc': float(p.dongiagoc),
+        'gia_ban': float(p.dongiaban),
+        'ton_kho': p.tonkho,
+        'is_active': p.is_active,
+        'ghichu': p.ghichu or ''
+    } for p in products]
+    return JsonResponse(data, safe=False)
+
+def update_product_api(request, product_id):
+    """Cập nhật sản phẩm"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            product = SanPham.objects.get(id=product_id)
+            
+            product.tensanpham = data.get('ten', '').strip()
+            product.barcode = data.get('barcode', '').strip() or ''
+            product.donvitinh = data.get('donvi', 'Cái').strip()
+            product.dongiagoc = Decimal(str(data.get('gia_goc', 0)))
+            product.dongiaban = Decimal(str(data.get('gia_ban', 0)))
+            product.tonkho = int(data.get('ton_kho', 0))
+            product.is_active = data.get('is_active', True)
+            product.ghichu = data.get('ghichu', '').strip()
+            product.save()
+            
+            return JsonResponse({'status': 'success', 'message': 'Cập nhật thành công'})
+        except SanPham.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Sản phẩm không tồn tại'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+def toggle_product_status(request, product_id):
+    """Bật/tắt trạng thái sản phẩm"""
+    if request.method == 'POST':
+        try:
+            product = SanPham.objects.get(id=product_id)
+            product.is_active = not product.is_active
+            product.save()
+            return JsonResponse({
+                'status': 'success', 
+                'message': f'Đã {"kích hoạt" if product.is_active else "ngừng bán"} sản phẩm',
+                'is_active': product.is_active
+            })
+        except SanPham.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Sản phẩm không tồn tại'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})

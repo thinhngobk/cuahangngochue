@@ -1,5 +1,7 @@
+{% extends 'base.html' %}
 {% load humanize %}
 
+{% block extra_css %}
 <style>
     .select2-container--default .select2-selection--single {
         border-radius: 0.75rem !important;
@@ -25,7 +27,9 @@
         pointer-events: none;
     }
 </style>
+{% endblock %}
 
+{% block content %}
 <div class="max-w-[95%] mx-auto py-6 font-sans text-slate-950">
     <!-- Header -->
     <div class="bg-white p-6 rounded-[2rem] shadow-md border-2 border-slate-100 mb-6">
@@ -58,12 +62,12 @@
                 </div>
                 <div class="w-full sm:w-auto">
                     <label class="block text-[11px] font-black text-slate-700 uppercase ml-2 mb-1">Từ ngày:</label>
-                    <input type="date" name="tu_ngay" value="{{ tu_ngay }}"
+                    <input type="date" name="tu_ngay" value="{{ tu_ngay|default:'' }}"
                         class="w-full p-2.5 border-2 border-slate-200 rounded-xl font-extrabold text-sm outline-none focus:border-emerald-500">
                 </div>
                 <div class="w-full sm:w-auto">
                     <label class="block text-[11px] font-black text-slate-700 uppercase ml-2 mb-1">Đến ngày:</label>
-                    <input type="date" name="den_ngay" value="{{ den_ngay }}"
+                    <input type="date" name="den_ngay" value="{{ den_ngay|default:'' }}"
                         class="w-full p-2.5 border-2 border-slate-200 rounded-xl font-extrabold text-sm outline-none focus:border-emerald-500">
                 </div>
                 <button type="submit"
@@ -284,6 +288,9 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
     $(document).ready(function () {
         // Khởi tạo tìm kiếm khách hàng
@@ -328,3 +335,4 @@
             });
     }
 </script>
+{% endblock %}

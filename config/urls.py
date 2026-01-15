@@ -1,9 +1,12 @@
 from django.contrib import admin
 from django.urls import path
+import os
 from app_quan_ly import views 
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
-from app_quan_ly.views import invoice_views, return_views,customer_views  # ← Thêm return_views
+from app_quan_ly.views import invoice_views, return_views,customer_views, product_views  # ← Thêm return_views
 
 urlpatterns = [
     # --- ĐIỀU HƯỚNG TRANG CHỦ ---
@@ -31,16 +34,22 @@ urlpatterns = [
     path('print-invoice/<str:ma_hd>/', login_required(invoice_views.print_invoice), name='print_invoice'),
     path('api/copy-invoice/<int:hd_id>/', login_required(invoice_views.copy_invoice), name='copy_invoice'),
     
-
     # Sản phẩm & Khách hàng
     path('search-sp/', login_required(views.search_san_pham), name='search_sp'),
     path('add_customer_fast/', login_required(views.add_customer_fast), name='add_customer_fast'),
     path('add_product_fast/', login_required(views.add_product_fast), name='add_product_fast'),
     path('customer-manager/', login_required(views.customer_manager), name='customer_manager'),
     path('product-manager/', login_required(views.product_manager), name='product_manager'),
+    path('products/', login_required(views.product_manager), name='products'),  # Thêm alias
     path('api/get-customers/', login_required(customer_views.get_customers_api), name='get_customers_api'),
     path('api/customer-detail/<int:kh_id>/', login_required(customer_views.get_customer_detail_api), name='customer_detail_api'),
-
+    path('api/update-customer/<int:kh_id>/', login_required(customer_views.update_customer_api), name='update_customer_api'),
+    # API Sản phẩm
+    path('api/get-products/', login_required(product_views.get_products_api), name='get_products_api'),
+    path('api/update-product/<int:product_id>/', login_required(product_views.update_product_api), name='update_product_api'),
+    path('api/toggle-product-status/<int:product_id>/', login_required(product_views.toggle_product_status), name='toggle_product_status'),
+    path('api/search-customers/', login_required(customer_views.search_customers_api), name='search_customers_api'),
+        
 
     # Phiếu thu & Công nợ
     path('api/save-receipt/', login_required(views.save_receipt), name='save_receipt'),
@@ -61,4 +70,7 @@ urlpatterns = [
     path('api/cancel-invoice-hoan/<int:hh_id>/', login_required(return_views.cancel_invoice_hoan), name='cancel_invoice_hoan'),  # ← Sửa id → hh_id
     path('api/copy-invoice-hoan/<int:hh_id>/', login_required(return_views.copy_invoice_hoan), name='copy_invoice_hoan'),  # ← Thêm login_required
     path('api/hoan/edit/<int:hh_id>/', return_views.edit_invoice_hoan, name='edit_invoice_hoan'),
+    
 ]
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=os.path.join(settings.BASE_DIR, 'static'))

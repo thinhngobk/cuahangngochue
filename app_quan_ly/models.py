@@ -9,7 +9,6 @@ import uuid
 class KhachHang(models.Model):
     
     PHAN_LOAI = [('SI', 'Sỉ'), ('LE', 'Lẻ')]
-    
     makhachhang = models.CharField(max_length=15, unique=True, editable=False)
     tenkhachhang = models.CharField(max_length=255)
     tenkhachhangkhongdau = models.CharField(max_length=255, blank=True, editable=False)
@@ -271,8 +270,8 @@ class PhieuThu(models.Model):
             ("cancel_phieuthu", "Có thể hủy phiếu thu"),
         ]
     
-    maphieuthu = models.CharField(max_length=20, unique=True, editable=False)
-    mahoadon = models.CharField(max_length=20, blank=True)
+    maphieuthu = models.CharField(max_length=50, unique=True, editable=False)
+    mahoadon = models.CharField(max_length=50, blank=True)
     khachhang = models.ForeignKey(KhachHang, on_delete=models.PROTECT)
     ngaylap = models.DateTimeField(auto_now_add=True)
     nguoi_lap = models.ForeignKey(

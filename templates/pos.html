@@ -74,7 +74,7 @@
             today: new Date().toLocaleDateString('vi-VN'),
             cart: [],
             customers: JSON.parse(document.getElementById('customers-data').textContent || '[]'),
-            ngayLap: new Date().toISOString().split('T')[0],
+            ngayLap: '',
             khachhang_id: "",
             searchProdQuery: "",
             selectedQty: 1,           // THÊM DÒNG NÀY
@@ -318,13 +318,13 @@
                     });
                     const result = await response.json();
                     if (result.status === 'success') {
-                        alert(`Đã thêm sản phẩm: ${result.ten}`);
+                        alert(`Đã thêm sản phẩm: ${result.product.tensanpham || result.product.ten}`);
 
                         this.addItem({
-                            id: result.id,
-                            ten: result.ten,
-                            gia: result.gia,
-                            donvi: result.donvi
+                            id: result.product.id,
+                            ten: result.product.ten,
+                            gia: result.product.gia_ban,
+                            donvi: result.product.donvi
                         });
 
                         this.showAddProd = false;
@@ -395,7 +395,13 @@
                     const result = await res.json();
 
                     if (result.status === 'success') {
-                        alert(shouldApprove ? "✅ Đã duyệt và ghi sổ nợ thành công!" : "✅ Đã lưu đơn tạm!");
+                        // Hỏi có muốn in không
+                        const wantPrint = confirm('✅ Lưu thành công!\n\n📄 Bạn có muốn in hóa đơn không?');
+
+                        if (wantPrint) {
+                            window.open(`/print-invoice/${result.ma_hd}/`, '_blank');
+                        }
+
                         location.reload();
                     } else {
                         alert("❌ Lỗi: " + result.message);
@@ -434,8 +440,8 @@
                             hx-trigger="keyup[target.value.length >= 2] changed delay:300ms" hx-target="#search-results"
                             name="q" autocomplete="off">
                         <div id="search-results" x-show="searchProdQuery.length >= 2"
-                            class="absolute w-full left-0 z-50 bg-white border shadow-2xl rounded-b-2xl mt-2 max-h-96 overflow-y-auto"
-                            @click.away="searchProdQuery = ''"></div>
+                            class="absolute w-full left-0 z-50 bg-white border shadow-2xl rounded-b-2xl mt-2 max-h-96 overflow-y-auto custom-scrollbar"
+                            @click.away="searchProdQuery = ''; $el.innerHTML = ''"></div>
                     </div>
 
                     <!-- Quantity Input -->
@@ -588,6 +594,7 @@
                         Thanh toán
                     </h2>
                     <input type="date" x-model="ngayLap"
+                        placeholder="Chọn ngày lập"
                         class="px-3 py-1.5 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:outline-none font-semibold text-sm">
                 </div>
 
@@ -686,16 +693,11 @@
                 </div>
 
                 <!-- ACTION BUTTONS -->
-                <div class="pt-3 space-y-2 shrink-0 bg-white border-t border-dashed mt-2">
-                    <button @click="saveInvoiceAction(false)"
-                        class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 rounded-xl text-[12px] uppercase tracking-wider transition-all">
-                        Lưu nháp
-                    </button>
-                    <button @click="saveInvoiceAction(true)"
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 rounded-xl shadow-md text-[12px] uppercase tracking-wider transition-all">
-                        Lưu & Duyệt
-                    </button>
-                </div>
+                <button @click="saveInvoiceAction(true)" :disabled="cart.length === 0 || !khachhang_id || !ngayLap"
+                    :class="(cart.length > 0 && khachhang_id && ngayLap) ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-300 cursor-not-allowed opacity-50'"
+                    class="w-full text-white font-bold py-5 rounded-xl shadow-md text-[12px] uppercase tracking-wider transition-all">
+                    💾 LƯU VÀ THANH TOÁN
+                </button>
             </div>
         </div>
     </div>

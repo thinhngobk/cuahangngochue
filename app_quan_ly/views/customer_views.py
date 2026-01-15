@@ -124,6 +124,7 @@ def get_customers_api(request):
         'diachi': kh.diachi or '',
         'phan_loai': kh.phanloai,
         'du_no': float(kh.du_no_hien_tai),
+        'no_dau_ky': float(kh.no_dau_ky),  # ← THÊM
         'han_muc_no': float(kh.han_muc_no),
         'mst': kh.mst or '',
         'ghichu': kh.ghichu or ''
@@ -148,6 +149,7 @@ def get_customer_detail_api(request, kh_id):
             'ma': kh.makhachhang,
             'ten': kh.tenkhachhang,
             'du_no': float(kh.du_no_hien_tai),
+            'no_dau_ky': float(kh.no_dau_ky),
             'phan_loai': kh.phanloai,
             'sdt': kh.sdt or '',
             'diachi': kh.diachi or '',
@@ -224,7 +226,32 @@ def search_customers_api(request):
     } for kh in customers]
     
     return JsonResponse(data, safe=False)
-
+@transaction.atomic
+def update_customer_api(request, kh_id):
+    """API cập nhật thông tin khách hàng"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            kh = KhachHang.objects.get(id=kh_id)
+            
+            # ✅ CHỈ CHO SỬA CÁC TRƯỜNG NÀY
+            kh.tenkhachhang = data.get('ten', '').strip()
+            kh.sdt = data.get('sdt', '').strip()
+            kh.diachi = data.get('diachi', '').strip()
+            kh.email = data.get('email', '').strip()
+            kh.mst = data.get('mst', '').strip()
+            kh.phanloai = data.get('phanloai', 'LE')
+            kh.ghichu = data.get('ghichu', '').strip()
+            
+            # ❌ KHÔNG CHO SỬA: no_dau_ky, han_muc_no, du_no
+            
+            kh.save()
+            return JsonResponse({'status': 'success', 'message': 'Cập nhật thành công'})
+        except KhachHang.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Khách hàng không tồn tại'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
 def get_customers_paginated_api(request):
     """
     API lấy danh sách khách hàng CÓ PHÂN TRANG

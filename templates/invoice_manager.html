@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block extra_css %}
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -160,7 +161,7 @@
                 window.open(`/print-invoice/${ma_hd}/`, '_blank');
             },
 
-            resetFilters() {    
+            resetFilters() {
                 this.searchCustomer = '';
                 this.filterStatus = 'all';
                 this.searchInvoiceCode = '';
@@ -182,64 +183,106 @@
     <!-- Header Section -->
     <div class="max-w-7xl mx-auto p-6">
         <div
-            class="bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl shadow-slate-200/50 p-8 mb-6 border border-white">
-            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-                <!-- Title Area -->
+            class="bg-gradient-to-br from-blue-50 via-white to-purple-50 rounded-3xl shadow-2xl p-8 mb-6 border-2 border-blue-100">
+            <!-- Header Section -->
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-6">
                 <div>
                     <a href="{% url 'pos' %}"
-                        class="text-blue-600 font-bold flex items-center gap-2 mb-3 hover:text-blue-700 transition-colors group">
+                        class="inline-flex items-center gap-2 text-blue-600 font-bold text-sm uppercase tracking-wide mb-3 hover:text-blue-700 transition-all group">
                         <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none"
                             stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
-                        <span class="text-sm uppercase tracking-wide">Quay lại bán hàng</span>
+                        Quay lại bán hàng
                     </a>
-                    <h1
-                        class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-blue-600 uppercase tracking-tight">
-                        Lịch sử giao dịch
+                    <h1 class="text-4xl font-black text-slate-800 uppercase tracking-tight mb-2">
+                        📊 Lịch sử giao dịch
                     </h1>
-                    <p class="text-slate-500 font-medium mt-2 text-sm">Quản lý và theo dõi tất cả hóa đơn của bạn</p>
+                    <p class="text-slate-500 font-medium text-sm">Quản lý và theo dõi tất cả hóa đơn của bạn</p>
                 </div>
 
-                <!-- Filters Area -->
-                <div class="flex flex-wrap gap-3 items-center">
-                    <div class="relative">
-                        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input type="text" x-model="searchCustomer" @input.debounce.500ms="fetchInvoices()"
-                            placeholder="Tìm khách hàng..."
-                            class="pl-10 pr-4 py-3 w-56 rounded-2xl border-2 border-slate-200 shadow-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-sm transition-all bg-white">
+                <!-- Quick Stats -->
+                <div class="flex gap-3">
+                    <div class="bg-white rounded-2xl px-4 py-3 border-2 border-blue-100 shadow-sm">
+                        <div class="text-xs font-bold text-slate-400 uppercase mb-1">Tổng HĐ</div>
+                        <div class="text-2xl font-black text-blue-600" x-text="invoices.length"></div>
+                    </div>
+                    <div class="bg-white rounded-2xl px-4 py-3 border-2 border-amber-100 shadow-sm">
+                        <div class="text-xs font-bold text-slate-400 uppercase mb-1">Chờ duyệt</div>
+                        <div class="text-2xl font-black text-amber-600"
+                            x-text="invoices.filter(i => i.slug_status === 'pending').length"></div>
+                    </div>
+                    <div class="bg-white rounded-2xl px-4 py-3 border-2 border-emerald-100 shadow-sm">
+                        <div class="text-xs font-bold text-slate-400 uppercase mb-1">Đã duyệt</div>
+                        <div class="text-2xl font-black text-emerald-600"
+                            x-text="invoices.filter(i => i.slug_status === 'approved').length"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-200">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+                    <!-- Search Customer -->
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">🔍 Khách hàng</label>
+                        <div class="relative">
+                            <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input type="text" x-model="searchCustomer" @input.debounce.500ms="fetchInvoices()"
+                                placeholder="Tìm tên khách hàng..."
+                                class="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-slate-100 font-semibold text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                        </div>
                     </div>
 
-                    <select x-model="filterStatus" @change="fetchInvoices()"
-                        class="px-4 py-3 w-48 rounded-2xl border-2 border-slate-200 shadow-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-sm bg-white transition-all">
-                        <option value="all">🔄 Tất cả trạng thái</option>
-                        <option value="pending">⏳ Chờ duyệt</option>
-                        <option value="approved">✅ Đã duyệt</option>
-                        <option value="canceled">❌ Đã hủy</option>
-                    </select>
+                    <!-- Status Filter -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">📊 Trạng thái</label>
+                        <select x-model="filterStatus" @change="fetchInvoices()"
+                            class="w-full px-4 py-3 rounded-xl border-2 border-slate-100 font-semibold text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                            <option value="all">Tất cả</option>
+                            <option value="pending">⏳ Chờ duyệt</option>
+                            <option value="approved">✅ Đã duyệt</option>
+                            <option value="canceled">❌ Đã hủy</option>
+                        </select>
+                    </div>
 
-                    <input type="text" x-model="searchInvoiceCode" @input.debounce.300ms="fetchInvoices()"
-                        placeholder="Tìm mã HĐ..."
-                        class="px-4 py-3 w-40 rounded-2xl border-2 border-slate-200 shadow-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-sm bg-white transition-all">
+                    <!-- Invoice Code -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">🏷️ Mã HĐ</label>
+                        <input type="text" x-model="searchInvoiceCode" @input.debounce.300ms="fetchInvoices()"
+                            placeholder="Nhập mã..."
+                            class="w-full px-4 py-3 rounded-xl border-2 border-slate-100 font-semibold text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                    </div>
 
-                    <input type="date" x-model="filterFromDate" @change="fetchInvoices()"
-                        class="px-4 py-3 rounded-2xl border-2 border-slate-200 shadow-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-sm bg-white transition-all">
+                    <!-- From Date -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">📅 Từ ngày</label>
+                        <input type="date" x-model="filterFromDate" @change="fetchInvoices()"
+                            class="w-full px-4 py-3 rounded-xl border-2 border-slate-100 font-semibold text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                    </div>
 
-                    <input type="date" x-model="filterToDate" @change="fetchInvoices()"
-                        class="px-4 py-3 rounded-2xl border-2 border-slate-200 shadow-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-sm bg-white transition-all">
-                    <button @click="resetFilters()"
-                        class="p-3 bg-white text-slate-500 rounded-2xl shadow-sm hover:text-blue-600 hover:bg-blue-50 border-2 border-slate-200 transition-all group">
-                        <svg class="w-6 h-6 group-hover:rotate-180 transition-transform duration-500" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                    </button>
+                    <!-- To Date -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">📅 Đến ngày</label>
+                        <div class="flex gap-2">
+                            <input type="date" x-model="filterToDate" @change="fetchInvoices()"
+                                class="flex-1 px-4 py-3 rounded-xl border-2 border-slate-100 font-semibold text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+
+                            <button @click="resetFilters()" title="Reset filters"
+                                class="p-3 bg-slate-100 hover:bg-blue-500 text-slate-600 hover:text-white rounded-xl transition-all group">
+                                <svg class="w-5 h-5 group-hover:rotate-180 transition-transform duration-500"
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

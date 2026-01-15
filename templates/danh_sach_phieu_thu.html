@@ -3,170 +3,403 @@
 
 {% block extra_css %}
 <style>
-    body {
-        font-family: 'Inter', sans-serif;
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 10px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
     }
 
     .row-canceled {
         opacity: 0.5;
         background-color: #fef2f2;
     }
-
-    ::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    ::-webkit-scrollbar-track {
-        background: #f1f1f1;
-    }
-
-    ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 10px;
-    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto">
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
-        <div>
-            <a href="/" class="text-[10px] font-black text-emerald-600 uppercase mb-1 block hover:underline">← Trang chủ</a>
-            <h1 class="text-3xl font-black text-slate-800 tracking-tighter uppercase">Quản lý <span class="text-emerald-600">Phiếu Thu</span></h1>
+<div class="bg-slate-50 min-h-screen" x-data="receiptManager()" x-init="init()" x-cloak>
+    <div class="w-full px-4 py-6 space-y-6">
+
+        <!-- HEADER -->
+        <div class="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-6 shadow-lg">
+            <div class="flex justify-between items-center">
+                <div>
+                    <a href="/"
+                        class="text-xs font-bold text-white/80 uppercase mb-2 block hover:text-white transition">← Trang
+                        chủ</a>
+                    <h1 class="text-3xl font-black text-white tracking-tight">💰 QUẢN LÝ PHIẾU THU</h1>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4 px-6 border border-white/30 min-w-[200px]">
+                    <div class="text-[10px] uppercase font-black text-white/80 tracking-wider mb-1">Tổng thu (đã lọc)
+                    </div>
+                    <div class="text-3xl font-black text-white" x-text="formatVND(tongThu)"></div>
+                </div>
+            </div>
         </div>
-        <div class="bg-emerald-600 p-4 px-6 rounded-[1.5rem] text-white shadow-lg shadow-emerald-100 text-right border-b-4 border-emerald-700 min-w-[200px]">
-            <div class="text-[9px] uppercase font-black opacity-80 tracking-widest">Tổng tiền đã lọc</div>
-            <div class="text-2xl font-black">{{ tong_thu|default:0|intcomma }}đ</div>
+
+        <!-- FILTER BAR -->
+        <div class="bg-white rounded-2xl shadow-lg border-2 border-emerald-100 p-6">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">🔍 Tìm kiếm</label>
+                    <input type="text" x-model="searchQuery"
+                        class="w-full px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-emerald-500 outline-none font-semibold"
+                        placeholder="Tìm khách hàng, mã phiếu...">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">📅 Từ ngày</label>
+                    <input type="date" x-model="fromDate"
+                        class="w-full px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-emerald-500 outline-none font-semibold">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">📅 Đến ngày</label>
+                    <input type="date" x-model="toDate"
+                        class="w-full px-4 py-3 border-2 border-slate-100 rounded-xl focus:border-emerald-500 outline-none font-semibold">
+                </div>
+
+                <div class="flex items-end gap-2">
+                    <button @click="filter()"
+                        class="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-all uppercase text-sm">
+                        Lọc
+                    </button>
+                    <button @click="showAddModal = true"
+                        class="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-all text-lg">
+                        ➕
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABLE -->
+        <div class="bg-white rounded-2xl shadow-lg border-2 border-emerald-100 overflow-hidden">
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full">
+                    <thead class="bg-gradient-to-r from-slate-800 to-emerald-900 text-white">
+                        <tr>
+                            <th class="px-4 py-4 text-left text-xs font-black uppercase tracking-wider">🏷️ Mã phiếu
+                            </th>
+                            <th class="px-4 py-4 text-left text-xs font-black uppercase tracking-wider">📅 Ngày lập</th>
+                            <th class="px-4 py-4 text-left text-xs font-black uppercase tracking-wider">👤 Khách hàng
+                            </th>
+                            <th class="px-4 py-4 text-right text-xs font-black uppercase tracking-wider">💰 Số tiền</th>
+                            <th class="px-4 py-4 text-left text-xs font-black uppercase tracking-wider">💳 Hình thức
+                            </th>
+                            <th class="px-4 py-4 text-center text-xs font-black uppercase tracking-wider">📊 Trạng thái
+                            </th>
+                            <th class="px-4 py-4 text-left text-xs font-black uppercase tracking-wider">📝 Ghi chú</th>
+                            <th class="px-4 py-4 text-center text-xs font-black uppercase tracking-wider">⚙️ Thao tác
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        {% for p in phieu_thu_list %}
+                        <tr
+                            class="hover:bg-emerald-50 transition-colors {% if p.trang_thai_duyet == 'canceled' %}row-canceled{% endif %}">
+                            <td class="px-4 py-4">
+                                <div class="font-bold text-emerald-600">#{{ p.maphieuthu }}</div>
+                                {% if p.mahoadon %}
+                                <div class="text-xs text-amber-600 mt-1">🔗 HĐ: {{ p.mahoadon }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="text-sm font-semibold">{{ p.ngaylap|date:"d/m/Y" }}</div>
+                                <div class="text-xs text-slate-400">{{ p.ngaylap|date:"H:i" }}</div>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="font-bold text-slate-800">{{ p.khachhang.tenkhachhang }}</div>
+                                {% if p.khachhang.sdt %}
+                                <div class="text-xs text-slate-400">📞 {{ p.khachhang.sdt }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-4 text-right">
+                                <div class="text-lg font-black text-emerald-600">{{ p.sotienthu|intcomma }}₫</div>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="text-sm font-semibold">{{ p.hinhthucthanhtoan }}</div>
+                            </td>
+                            <td class="px-4 py-4 text-center">
+                                {% if p.trang_thai_duyet == 'approved' %}
+                                <span
+                                    class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-black uppercase">✓
+                                    Đã duyệt</span>
+                                {% elif p.trang_thai_duyet == 'pending' %}
+                                <span
+                                    class="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-black uppercase">⏳
+                                    Chờ</span>
+                                {% else %}
+                                <span
+                                    class="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-black uppercase">✕
+                                    Hủy</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="text-sm text-slate-600 max-w-xs truncate" title="{{ p.ghichu }}">
+                                    {{ p.ghichu|default:"-" }}
+                                </div>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="flex items-center justify-center gap-2">
+                                    {% if p.mahoadon %}
+                                    <span class="text-xs text-amber-600 font-bold">🔗 Đính kèm HĐ</span>
+                                    {% else %}
+                                    {% if p.trang_thai_duyet == 'pending' and perms.app_name.approve_phieuthu %}
+                                    <form method="POST" action="{% url 'duyet_phieu_thu' p.id %}"
+                                        onsubmit="return confirm('Xác nhận duyệt?')">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                            class="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-all hover:scale-110"
+                                            title="Duyệt">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+
+                                    {% if p.trang_thai_duyet == 'pending' %}
+                                    <button
+                                        @click="editReceipt({{ p.id }}, {{ p.khachhang.id }}, {{ p.sotienthu }}, '{{ p.ghichu|escapejs }}', '{{ p.hinhthucthanhtoan|escapejs }}')"
+                                        class="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all hover:scale-110"
+                                        title="Sửa">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </button>
+                                    {% endif %}
+
+                                    {% if p.trang_thai_duyet != 'canceled' %}
+                                    <a href="{% url 'huy_phieu_thu' p.id %}" onclick="return confirm('Xác nhận hủy?')"
+                                        class="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all hover:scale-110"
+                                        title="Hủy">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </a>
+                                    {% endif %}
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="p-24 text-center">
+                                <div class="text-6xl mb-4">💰</div>
+                                <div class="text-xl font-bold text-slate-400">Chưa có phiếu thu nào</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <!-- FORM LỌC -->
-    <div class="bg-white p-4 rounded-[1.5rem] shadow-sm border border-slate-100 mb-6">
-        <form method="GET" class="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
-            <div>
-                <label class="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest">Tìm kiếm</label>
-                <input type="text" name="search" value="{{ search_query|default:'' }}" placeholder="Khách/Mã..."
-                    class="w-full mt-1 p-2 px-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-emerald-500 transition-all">
-            </div>
-            <div>
-                <label class="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest">Từ ngày</label>
-                <input type="date" name="tu_ngay" value="{{ tu_ngay }}"
-                    class="w-full mt-1 p-2 px-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none">
-            </div>
-            <div>
-                <label class="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest">Đến ngày</label>
-                <input type="date" name="den_ngay" value="{{ den_ngay }}"
-                    class="w-full mt-1 p-2 px-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none">
-            </div>
-            <div class="flex gap-2 col-span-2">
-                <button type="submit"
-                    class="flex-1 p-2 bg-slate-800 text-white rounded-xl font-black uppercase text-[10px] hover:bg-black transition-all">Lọc</button>
-                <button type="button" onclick="toggleQuickReceiptModal()"
-                    class="p-2 px-3 bg-emerald-600 text-white rounded-xl font-black hover:bg-emerald-700 transition-all shadow-md">+</button>
-            </div>
-        </form>
-    </div>
+    <!-- MODAL: ADD/EDIT -->
+    <div x-show="showAddModal" x-cloak @click.self="showAddModal = false"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
 
-    <!-- TABLE -->
-    <div class="bg-white rounded-[1.5rem] shadow-sm border border-slate-200 overflow-hidden">
-        <table class="w-full text-left">
-            <thead class="bg-slate-50 uppercase text-[10px] font-black text-slate-400">
-                <tr>
-                    <th class="p-4">Mã Phiếu</th>
-                    <th class="p-4">Ngày lập</th>
-                    <th class="p-4">Khách hàng</th>
-                    <th class="p-4 text-right">Số tiền</th>
-                    <th class="p-4 text-center">Trạng thái</th>
-                    <th class="p-4 text-right">Hành động</th>
-                </tr>
-            </thead>
-            <tbody class="text-xs font-bold text-slate-700">
-                {% for p in phieu_thu_list %}
-                <tr class="border-b hover:bg-slate-50/50 {% if p.trang_thai_duyet == 'canceled' %}row-canceled{% endif %}">
-                    <td class="p-4">
-                        <div class="text-blue-600">#{{ p.maphieuthu }}</div>
-                        {% if p.mahoadon %}<div class="text-[8px] text-amber-600">→ HĐ: {{ p.mahoadon }}</div>{% endif %}
-                    </td>
-                    <td class="p-4">{{ p.ngaylap|date:"d/m/Y H:i" }}</td>
-                    <td class="p-4">{{ p.khachhang.tenkhachhang }}</td>
-                    <td class="p-4 text-right text-emerald-600 font-black">{{ p.sotienthu|intcomma }}đ</td>
-                    <td class="p-4 text-center">
-                        {% if p.trang_thai_duyet == 'approved' %}
-                        <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[9px]">Đã duyệt</span>
-                        {% elif p.trang_thai_duyet == 'pending' %}
-                        <span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[9px]">Chờ</span>
-                        {% else %}
-                        <span class="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[9px]">Hủy</span>
-                        {% endif %}
-                    </td>
-                    <td class="p-4 text-right">
-                        <div class="flex justify-end gap-1.5">
-                            {% if p.mahoadon %}
-                            <span class="text-[9px] text-amber-600">📎 Đính kèm HĐ</span>
-                            {% else %}
-                            {% if p.trang_thai_duyet == 'pending' and perms.app_name.approve_phieuthu %}
-                            <form method="POST" action="{% url 'duyet_phieu_thu' p.id %}" style="display:inline" onsubmit="return confirm('Duyệt?')">
-                                {% csrf_token %}
-                                <button type="submit" class="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white">✓</button>
-                            </form>
-                            {% endif %}
-                            {% if p.trang_thai_duyet == 'pending' %}
-                            <button onclick="openEditModal('{{ p.id }}','{{ p.khachhang.id }}','{{ p.sotienthu }}','{{ p.ghichu }}')"
-                                class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">✎</button>
-                            {% endif %}
-                            {% if p.trang_thai_duyet != 'canceled' %}
-                            <a href="{% url 'huy_phieu_thu' p.id %}" onclick="return confirm('Hủy?')"
-                                class="p-1.5 bg-rose-50 text-rose-600 rounded-lg">✕</a>
-                            {% endif %}
-                            {% endif %}
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl border border-slate-200" @click.stop>
+            <!-- HEADER -->
+            <div class="flex items-center p-6 pb-4 border-b border-slate-100">
+                <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center mr-3">
+                    <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter"
+                    x-text="editingId ? '✏️ Sửa phiếu thu' : '➕ Thêm phiếu thu'"></h3>
+                <button @click="showAddModal = false" class="ml-auto text-slate-400 hover:text-slate-600 p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- CONTENT -->
+            <form method="POST" action="{% url 'luu_phieu_thu_nhanh' %}" class="p-6 space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="phieu_id" x-model="editingId">
+
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Khách hàng *</label>
+                    <div class="relative">
+                        <input type="text" x-model="customerSearch" @input="searchCustomersInModal()"
+                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-emerald-500 outline-none font-bold"
+                            placeholder="Tìm tên hoặc SĐT khách hàng..." autocomplete="off">
+
+                        <input type="hidden" name="khachhang_id" x-model="formData.khachhang_id" required>
+
+                        <div x-show="customerResults.length > 0"
+                            class="absolute w-full left-0 top-full z-50 bg-white border-2 border-emerald-200 shadow-2xl rounded-2xl mt-2 max-h-60 overflow-y-auto"
+                            @click.away="customerResults = []">
+                            <template x-for="kh in customerResults" :key="kh.id">
+                                <div @click="selectCustomer(kh)"
+                                    class="p-3 hover:bg-emerald-50 cursor-pointer border-b flex justify-between items-center">
+                                    <div>
+                                        <div class="font-bold text-sm" x-text="kh.ten"></div>
+                                        <div class="text-xs text-slate-400" x-text="kh.ma"></div>
+                                    </div>
+                                    <div class="text-xs text-slate-500" x-text="kh.sdt || '-'"></div>
+                                </div>
+                            </template>
                         </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" class="p-16 text-center text-slate-300 uppercase">Không có dữ liệu</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+                    </div>
+                </div>
 
-<!-- MODAL -->
-<div id="quickReceiptModal" class="hidden fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/60 p-4">
-    <div class="bg-white rounded-[2rem] p-6 max-w-md w-full">
-        <h2 class="text-xl font-black mb-4">Phiếu Thu</h2>
-        <form method="POST" action="{% url 'luu_phieu_thu_nhanh' %}">
-            {% csrf_token %}
-            <input type="hidden" name="phieu_id" id="modal_phieu_id">
-            <div class="space-y-3">
-                <select name="khachhang_id" required class="w-full p-2 border rounded-xl">
-                    <option value="">Chọn khách hàng</option>
-                    {% for kh in khach_hang_list %}
-                    <option value="{{ kh.id }}">{{ kh.tenkhachhang }}</option>
-                    {% endfor %}
-                </select>
-                <input type="number" name="so_tien" placeholder="Số tiền" required class="w-full p-2 border rounded-xl">
-                <textarea name="ghi_chu" placeholder="Ghi chú" class="w-full p-2 border rounded-xl"></textarea>
-            </div>
-            <div class="flex gap-2 mt-4">
-                <button type="submit" class="flex-1 p-2 bg-emerald-600 text-white rounded-xl">Lưu</button>
-                <button type="button" onclick="toggleQuickReceiptModal()" class="flex-1 p-2 bg-slate-200 rounded-xl">Hủy</button>
-            </div>
-        </form>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Số tiền (₫) *</label>
+                    <input type="text" x-model="formData.so_tien_display"
+                        @input="formData.so_tien = formData.so_tien_display.replace(/,/g, '')"
+                        @blur="formData.so_tien_display = formatNumber(formData.so_tien)"
+                        class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-emerald-500 outline-none font-bold text-right"
+                        placeholder="0">
+
+                    <input type="hidden" name="so_tien" x-model="formData.so_tien">
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Hình thức thanh toán</label>
+                    <select name="hinh_thuc" x-model="formData.hinh_thuc"
+                        class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-emerald-500 outline-none font-bold">
+                        <option value="Tiền mặt">Tiền mặt</option>
+                        <option value="Chuyển khoản">Chuyển khoản</option>
+                        <option value="Thẻ">Thẻ</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Ghi chú</label>
+                    <textarea name="ghi_chu" x-model="formData.ghi_chu" rows="3"
+                        class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-emerald-500 outline-none font-medium"
+                        placeholder="Nội dung ghi chú..."></textarea>
+                </div>
+
+                <!-- FOOTER -->
+                <div class="flex gap-3 pt-4">
+                    <button type="button" @click="showAddModal = false"
+                        class="px-8 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition-all uppercase text-sm">
+                        Hủy
+                    </button>
+                    <button type="submit"
+                        class="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black rounded-2xl shadow-lg transition-all uppercase text-sm">
+                        💾 Lưu phiếu thu
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
 <script>
-function toggleQuickReceiptModal() {
-    document.getElementById('quickReceiptModal').classList.toggle('hidden');
-}
-function openEditModal(id, khId, soTien, ghiChu) {
-    document.getElementById('modal_phieu_id').value = id;
-    document.querySelector('[name="khachhang_id"]').value = khId;
-    document.querySelector('[name="so_tien"]').value = soTien;
-    document.querySelector('[name="ghi_chu"]').value = ghiChu;
-    toggleQuickReceiptModal();
-}
+    function receiptManager() {
+        return {
+            showAddModal: false,
+            editingId: null,
+            searchQuery: '{{ search_query|default:""|escapejs }}',
+            fromDate: '{{ tu_ngay|default:"" }}',
+            toDate: '{{ den_ngay|default:"" }}',
+            tongThu: parseFloat('{{ tong_thu|default:0 }}') || 0,
+            formData: {
+                khachhang_id: '',
+                so_tien: '',
+                so_tien_display: '',
+                hinh_thuc: 'Tiền mặt',
+                ghi_chu: ''
+
+            },
+            customerSearch: '',
+            customerResults: [],
+            customerTimeout: null,
+            searchCustomersInModal() {
+                clearTimeout(this.customerTimeout);
+
+                if (this.customerSearch.length < 2) {
+                    this.customerResults = [];
+                    return;
+                }
+
+                this.customerTimeout = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`/api/search-customers/?q=${encodeURIComponent(this.customerSearch)}`);
+                        this.customerResults = await res.json();
+                    } catch (e) {
+                        console.error('Search error:', e);
+                        this.customerResults = [];
+                    }
+                }, 300);
+            },
+
+            selectCustomer(kh) {
+                this.formData.khachhang_id = kh.id;
+                this.customerSearch = kh.ten;
+                this.customerResults = [];
+            },
+            editReceipt(id, khId, soTien, ghiChu, hinhThuc) {
+                this.editingId = id;
+                this.formData = {
+                    khachhang_id: khId,
+                    so_tien: soTien,
+                    so_tien_display: this.formatNumber(soTien),  // ← THÊM
+                    hinh_thuc: hinhThuc || 'Tiền mặt',
+                    ghi_chu: ghiChu || ''
+                };
+                this.customerSearch = '';
+                this.showAddModal = true;
+            },
+            init() {
+                console.log('Receipt manager initialized');
+            },
+
+            filter() {
+                const params = new URLSearchParams();
+                if (this.searchQuery) params.append('search', this.searchQuery);
+                if (this.fromDate) params.append('tu_ngay', this.fromDate);
+                if (this.toDate) params.append('den_ngay', this.toDate);
+                window.location.href = '?' + params.toString();
+            },
+
+            editReceipt(id, khId, soTien, ghiChu, hinhThuc) {
+                this.editingId = id;
+                this.formData = {
+                    khachhang_id: khId,
+                    so_tien: soTien,
+                    hinh_thuc: hinhThuc || 'Tiền mặt',
+                    ghi_chu: ghiChu || ''
+                };
+                this.showAddModal = true;
+            },
+
+            formatVND(value) {
+                return new Intl.NumberFormat('en-US').format(value || 0) + ' ₫';
+            },
+            formatNumber(value) {
+                if (!value) return '';
+                return new Intl.NumberFormat('en-US').format(value);
+            },
+        }
+    }
 </script>
 {% endblock %}

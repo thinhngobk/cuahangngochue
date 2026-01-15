@@ -7,112 +7,308 @@
 {% csrf_token %}
 
 <div class="bg-slate-50 min-h-screen" x-data="customerManager()" x-init="init()" x-cloak>
-    <div class="max-w-7xl mx-auto p-6 space-y-6">
-        <div class="bg-white rounded-xl shadow p-4 flex gap-4 items-center">
-            <input type="text" x-model="searchQuery" placeholder="Tìm tên, SĐT, mã khách..."
-                class="flex-1 border rounded-lg px-4 py-2 outline-none focus:ring-2 ring-purple-500">
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
 
-            <select x-model="filterType" class="border rounded-lg px-4 py-2 outline-none">
-                <option value="all">Tất cả phân loại</option>
-                <option value="LE">Khách lẻ</option>
-                <option value="SI">Khách sỉ</option>
-            </select>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
 
-            <button @click="showAddModal = true"
-                class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 transition shadow-md">
-                <span class="text-xl">+</span> Thêm khách hàng
-            </button>
-        </div>
-        <div class="bg-white rounded-xl shadow p-4 flex gap-4">
-            <input type="text" x-model="searchQuery" placeholder="Tìm tên, SĐT, mã khách..."
-                class="flex-1 border rounded-lg px-4 py-2 outline-none focus:ring-2 ring-purple-500">
-            <select x-model="filterType" class="border rounded-lg px-4 py-2">
-                <option value="all">Tất cả</option>
-                <option value="LE">Khách lẻ</option>
-                <option value="SI">Khách sỉ</option>
-            </select>
-        </div>
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
 
-        <div class="bg-white rounded-xl shadow overflow-hidden">
-            <table class="w-full">
-                <thead class="bg-slate-800 text-white text-xs uppercase">
-                    <tr>
-                        <th class="p-4 text-left">Mã KH</th>
-                        <th class="p-4 text-left">Tên khách hàng</th>
-                        <th class="p-4 text-left">SĐT</th>
-                        <th class="p-4 text-right">Dư nợ hiện tại</th>
-                        <th class="p-4 text-center">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y">
-                    <template x-for="c in filteredCustomers" :key="c.id">
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="p-4 font-bold text-purple-600" x-text="c.ma"></td>
-                            <td class="p-4 font-bold" x-text="c.ten"></td>
-                            <td class="p-4" x-text="c.sdt || '-'"></td>
-                            <td class="p-4 text-right font-black text-red-600" x-text="formatVND(c.du_no)"></td>
-                            <td class="p-4 text-center">
-                                <button @click="openView(c.id)"
-                                    class="bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 font-bold">Chi
-                                    tiết</button>
-                            </td>
-                        </tr>
-                    </template>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <div x-show="showAddModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4" x-cloak>
-        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showAddModal = false"></div>
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
 
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl z-10 overflow-hidden">
-            <div class="p-4 border-b bg-green-50 flex justify-between items-center">
-                <h2 class="text-lg font-black text-green-800 uppercase tracking-tight">🆕 Thêm khách hàng mới</h2>
-                <button @click="showAddModal = false"
-                    class="text-slate-400 hover:text-red-500 text-2xl">&times;</button>
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+
+    <div class="w-full px-4 py-6 space-y-6">
+        <!-- HEADER -->
+        <div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 mb-6 shadow-lg">
+            <div class="flex justify-between items-center">
+                <h1 class="text-3xl font-black text-white tracking-tight">👥 QUẢN LÝ KHÁCH HÀNG</h1>
+                <div class="text-white text-lg font-semibold">
+                    Tổng: <span class="font-black text-2xl" x-text="customers.length"></span> khách hàng
+                </div>
             </div>
+        </div>
 
-            <form @submit.prevent="saveCustomer" class="p-6 grid grid-cols-2 gap-4">
-                <div class="col-span-1">
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Mã khách hàng (Để trống sẽ tự
-                        tạo)</label>
-                    <input type="text" x-model="newCust.makhachhang"
-                        class="w-full border rounded-lg px-3 py-2 focus:ring-2 ring-green-500 outline-none">
-                </div>
-                <div class="col-span-1">
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tên khách hàng *</label>
-                    <input type="text" x-model="newCust.tenkhachhang" required
-                        class="w-full border rounded-lg px-3 py-2 focus:ring-2 ring-green-500 outline-none">
+        <!-- SEARCH & FILTER BAR -->
+        <div class="bg-white rounded-2xl shadow-lg border-2 border-purple-200 p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">🔍 Tìm kiếm</label>
+                    <input type="text" x-model="searchQuery"
+                        class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl focus:border-purple-500 outline-none font-semibold"
+                        placeholder="Tên khách hàng, mã, SĐT...">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Số điện thoại</label>
-                    <input type="text" x-model="newCust.sdt" class="w-full border rounded-lg px-3 py-2">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Phân loại</label>
-                    <select x-model="newCust.phanloai" class="w-full border rounded-lg px-3 py-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">📊 Phân loại</label>
+                    <select x-model="filterType"
+                        class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl focus:border-purple-500 outline-none font-semibold">
+                        <option value="all">Tất cả</option>
                         <option value="LE">Khách lẻ</option>
                         <option value="SI">Khách sỉ</option>
                     </select>
                 </div>
-                <div class="col-span-2">
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Địa chỉ</label>
-                    <input type="text" x-model="newCust.diachi" class="w-full border rounded-lg px-3 py-2">
+                <div class="flex items-end">
+                    <button @click="showAddModal = true" type="button"
+                        class="w-full px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 uppercase text-sm">
+                        <span>➕ Thêm mới</span>
+                    </button>
                 </div>
-                <div class="col-span-2 flex justify-end gap-3 mt-4">
-                    <button type="button" @click="showAddModal = false"
-                        class="px-6 py-2 font-bold text-slate-500">Hủy</button>
-                    <button type="submit"
-                        class="bg-green-600 text-white px-8 py-2 rounded-xl font-bold hover:bg-green-700 shadow-lg transition">Lưu
-                        khách hàng</button>
-                </div>
-            </form>
+            </div>
+        </div>
+
+        <!-- CUSTOMERS TABLE -->
+        <div class="bg-white rounded-2xl shadow-lg border-2 border-purple-200 overflow-hidden">
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full">
+                    <thead class="bg-gradient-to-r from-slate-800 to-purple-900 text-white">
+                        <tr>
+                            <th
+                                class="px-4 py-4 text-left text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                                🏷️ Mã KH</th>
+                            <th
+                                class="px-4 py-4 text-left text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                                👤 Tên khách hàng</th>
+                            <th
+                                class="px-4 py-4 text-left text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                                📍 Địa chỉ</th>
+                            <th
+                                class="px-4 py-4 text-left text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                                📞 SĐT</th>
+                            <th
+                                class="px-3 py-3 text-left text-xs font-black uppercase tracking-wider whitespace-nowrap hidden">
+                                📧 Email</th>
+                            <th
+                                class="px-4 py-4 text-center text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                                🏪 Phân loại</th>
+                            <th
+                                class="px-4 py-4 text-right text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                                💰 Nợ đầu kỳ</th>
+                            <th
+                                class="px-4 py-4 text-right text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                                📊 Dư nợ cuối kỳ</th>
+                            <th
+                                class="px-4 py-4 text-right text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                                🎯 Hạn mức nợ</th>
+                            <th
+                                class="px-4 py-4 text-left text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                                📝 Ghi chú</th>
+                            <th
+                                class="px-4 py-4 text-center text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                                ⚙️ Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        <template x-for="c in filteredCustomers" :key="c.id">
+                            <tr class="hover:bg-purple-50 transition-colors duration-150">
+                                <td class="px-4 py-4">
+                                    <div class="font-bold text-purple-600" x-text="c.ma"></div>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div class="font-bold text-slate-800" x-text="c.ten"></div>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div class="text-sm text-slate-600 max-w-[120px] truncate" x-text="c.diachi || '-'"
+                                        :title="c.diachi || ''"></div>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div class="font-mono text-sm" x-text="c.sdt || '-'"></div>
+                                </td>
+                                <td class="px-3 py-3 hidden">
+                                    <div class="text-sm text-slate-600" x-text="c.email || '-'"></div>
+                                </td>
+                                <td class="px-4 py-4 text-center">
+                                    <span class="px-3 py-1 rounded-full text-xs font-black uppercase whitespace-nowrap"
+                                        :class="c.phan_loai === 'SI' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'"
+                                        x-text="c.phan_loai === 'SI' ? 'Sỉ' : 'Lẻ'"></span>
+                                </td>
+                                <td class="px-4 py-4 text-right">
+                                    <div class="font-bold text-slate-600" x-text="formatVND(c.no_dau_ky)"></div>
+                                </td>
+                                <td class="px-4 py-4 text-right">
+                                    <div class="font-black text-lg"
+                                        :class="c.du_no > 0 ? 'text-red-600' : 'text-green-600'"
+                                        x-text="formatVND(c.du_no)"></div>
+                                </td>
+                                <td class="px-4 py-4 text-right">
+                                    <div class="font-bold text-orange-600" x-text="formatVND(c.han_muc_no)"></div>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div class="text-sm text-slate-500 max-w-[100px] truncate" x-text="c.ghichu || '-'"
+                                        :title="c.ghichu || ''"></div>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <button @click="editCustomer(c)"
+                                            class="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all hover:scale-110"
+                                            title="Sửa thông tin">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+                                        <button @click="openView(c.id)"
+                                            class="p-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-all hover:scale-110"
+                                            title="Xem chi tiết">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+
+                <template x-if="filteredCustomers.length === 0">
+                    <div class="p-24 text-center">
+                        <div class="text-6xl mb-4">👥</div>
+                        <div class="text-xl font-bold text-slate-400">Không tìm thấy khách hàng</div>
+                    </div>
+                </template>
+            </div>
         </div>
     </div>
-    <div x-show="showModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4" x-cloak>
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" @click="showModal = false"></div>
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden z-10 flex flex-col">
-            <div class="p-4 border-b bg-slate-50 flex justify-between items-center">
+
+    <!-- MODAL: ADD/EDIT CUSTOMER -->
+    <div x-show="showAddModal" x-cloak @click.self="showAddModal = false"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl border border-slate-200 max-h-[90vh] flex flex-col"
+            @click.stop>
+
+            <!-- HEADER -->
+            <div class="flex items-center p-6 pb-4 border-b border-slate-100 shrink-0">
+                <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter"
+                    x-text="editingCustomer ? '✏️ Chỉnh sửa khách hàng' : '➕ Thêm khách hàng mới'"></h3>
+                <button @click="showAddModal = false" class="ml-auto text-slate-400 hover:text-slate-600 p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- CONTENT -->
+            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Row 1: Mã KH (readonly khi edit) + Tên KH -->
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Mã khách hàng</label>
+                        <input type="text" x-model="formData.ma" :readonly="editingCustomer"
+                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-purple-500 outline-none font-bold"
+                            :class="editingCustomer ? 'bg-slate-50 cursor-not-allowed' : ''"
+                            placeholder="Để trống tự động tạo">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Tên khách hàng *</label>
+                        <input type="text" x-model="formData.ten" required
+                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-purple-500 outline-none font-bold"
+                            placeholder="Nhập tên khách hàng...">
+                    </div>
+
+                    <!-- Row 2: SĐT + Email -->
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Số điện thoại</label>
+                        <input type="text" x-model="formData.sdt"
+                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-purple-500 outline-none font-bold"
+                            placeholder="0xxxxxxxxx">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Email</label>
+                        <input type="email" x-model="formData.email"
+                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-purple-500 outline-none font-bold"
+                            placeholder="email@example.com">
+                    </div>
+
+                    <!-- Row 3: Địa chỉ (full width) -->
+                    <div class="col-span-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Địa chỉ</label>
+                        <input type="text" x-model="formData.diachi"
+                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-purple-500 outline-none font-bold"
+                            placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/TP">
+                    </div>
+
+                    <!-- Row 4: MST + Phân loại -->
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Mã số thuế</label>
+                        <input type="text" x-model="formData.mst"
+                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-purple-500 outline-none font-bold"
+                            placeholder="Mã số thuế (nếu có)">
+                    </div>
+                    <!-- Row 5: Nợ đầu kỳ + Hạn mức nợ (readonly khi edit) -->
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Nợ đầu kỳ (₫)</label>
+                        <input type="number" x-model="formData.no_dau_ky" :readonly="editingCustomer"
+                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-purple-500 outline-none font-bold text-right"
+                            :class="editingCustomer ? 'bg-slate-50 cursor-not-allowed' : ''" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Hạn mức nợ (₫)</label>
+                        <input type="number" x-model="formData.han_muc_no" :readonly="editingCustomer"
+                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-purple-500 outline-none font-bold text-right"
+                            :class="editingCustomer ? 'bg-slate-50 cursor-not-allowed' : ''" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Phân loại</label>
+                        <select x-model="formData.phanloai"
+                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-purple-500 outline-none font-bold">
+                            <option value="LE">Khách lẻ</option>
+                            <option value="SI">Khách sỉ</option>
+                        </select>
+                    </div>
+
+                    <!-- Row 5: Ghi chú (full width) -->
+                    <div class="col-span-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Ghi chú</label>
+                        <textarea x-model="formData.ghichu" rows="3"
+                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-purple-500 outline-none font-medium"
+                            placeholder="Thông tin thêm về khách hàng..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="flex gap-3 p-6 pt-4 border-t border-slate-100 shrink-0">
+                <button @click="showAddModal = false"
+                    class="px-8 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition-all uppercase text-sm">
+                    Hủy
+                </button>
+                <button @click="saveCustomer"
+                    class="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-black rounded-2xl shadow-lg transition-all uppercase text-sm">
+                    💾 <span x-text="editingCustomer ? 'Cập nhật' : 'Thêm mới'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: VIEW DETAIL -->
+    <div x-show="showModal" x-cloak @click.self="showModal = false"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
+            <div class="p-4 border-b bg-slate-50 flex justify-between items-center shrink-0">
                 <div class="flex items-center gap-3">
                     <span class="bg-purple-600 text-white px-3 py-1 rounded-lg font-bold text-sm"
                         x-text="customer.ma"></span>
@@ -121,27 +317,31 @@
                 <button @click="showModal = false" class="text-slate-400 hover:text-red-500 text-3xl">&times;</button>
             </div>
 
-            <div class="p-6 overflow-y-auto flex-1 bg-white">
+            <div class="p-6 overflow-y-auto flex-1 bg-white custom-scrollbar">
                 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
                     <div
                         class="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6 border p-5 rounded-2xl bg-slate-50/50">
-                        <div class="md:col-span-3 border-b pb-2"><span
-                                class="text-xs font-black text-purple-700 uppercase">📄 Thông tin hành chính</span>
+                        <div class="md:col-span-3 border-b pb-2">
+                            <span class="text-xs font-black text-purple-700 uppercase">📄 Thông tin hành chính</span>
                         </div>
-                        <div><label class="block text-[10px] text-slate-400 font-bold">SĐT</label>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 font-bold">SĐT</label>
                             <p class="font-bold" x-text="customer.sdt || '---'"></p>
                         </div>
-                        <div><label class="block text-[10px] text-slate-400 font-bold">Mã số thuế</label>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 font-bold">Mã số thuế</label>
                             <p class="font-bold" x-text="customer.mst || '---'"></p>
                         </div>
-                        <div><label class="block text-[10px] text-slate-400 font-bold">Email</label>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 font-bold">Email</label>
                             <p class="font-bold" x-text="customer.email || '---'"></p>
                         </div>
-                        <div class="md:col-span-2"><label class="block text-[10px] text-slate-400 font-bold">Địa
-                                chỉ</label>
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] text-slate-400 font-bold">Địa chỉ</label>
                             <p x-text="customer.diachi || '---'"></p>
                         </div>
-                        <div><label class="block text-[10px] text-slate-400 font-bold">Phân loại</label>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 font-bold">Phân loại</label>
                             <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-blue-100 text-blue-700"
                                 x-text="customer.phan_loai === 'SI' ? 'Khách Sỉ' : 'Khách Lẻ'"></span>
                         </div>
@@ -150,8 +350,10 @@
                         <label class="block text-[10px] text-slate-400 font-bold uppercase mb-2">Dư nợ hiện tại</label>
                         <p class="text-3xl font-black text-red-400" x-text="formatVND(customer.du_no)"></p>
                         <div class="mt-4 pt-4 border-t border-slate-700 text-xs space-y-2">
-                            <div class="flex justify-between"><span>Nợ đầu kỳ:</span><span
-                                    x-text="formatVND(customer.no_dau_ky)"></span></div>
+                            <div class="flex justify-between">
+                                <span>Nợ đầu kỳ:</span>
+                                <span x-text="formatVND(customer.no_dau_ky)"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -204,63 +406,130 @@
 
 {% block extra_js %}
 <script>
-        function customerManager() {
-            return {
-                customers: [], searchQuery: '', filterType: 'all', showModal: false,
-                customer: {}, entries: [], receipts: [],
-                init() { this.loadCustomers(); },
-                showAddModal: false,
-                newCust: {
-                    makhachhang: '',
-                    tenkhachhang: '',
-                    sdt: '',
-                    phanloai: 'LE',
-                    diachi: ''
-                },
-                async saveCustomer() {
-                    try {
-                        const response = await fetch('/api/add-customer/', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                            },
-                            body: JSON.stringify(this.newCust)
-                        });
+    function customerManager() {
+        return {
+            customers: [],
+            searchQuery: '',
+            filterType: 'all',
+            showModal: false,
+            showAddModal: false,
+            editingCustomer: null,
+            customer: {},
+            entries: [],
+            receipts: [],
+            formData: {
+                ma: '',
+                ten: '',
+                sdt: '',
+                email: '',
+                diachi: '',
+                mst: '',
+                phanloai: 'LE',
+                no_dau_ky: 0,    // ← THÊM
+                han_muc_no: 0,
+                ghichu: ''
+            },
 
-                        if (response.ok) {
-                            alert('Thêm khách hàng thành công!');
-                            this.showAddModal = false;
-                            this.loadCustomers(); // Tải lại danh sách
-                            this.newCust = { makhachhang: '', tenkhachhang: '', sdt: '', phanloai: 'LE', diachi: '' };
-                        } else {
-                            const err = await response.json();
-                            alert('Lỗi: ' + (err.message || 'Không thể lưu'));
-                        }
-                    } catch (e) {
-                        alert('Lỗi kết nối Server');
-                    }
-                },
-                async loadCustomers() {
-                    const res = await fetch('/api/get-customers/');
-                    this.customers = await res.json();
-                },
-                get filteredCustomers() {
-                    return this.customers.filter(c => {
-                        const s = this.searchQuery.toLowerCase();
-                        return (!this.searchQuery || c.ten.toLowerCase().includes(s) || c.ma.toLowerCase().includes(s)) && (this.filterType === 'all' || c.phan_loai === this.filterType);
+            init() {
+                this.loadCustomers();
+            },
+
+            resetForm() {
+                this.formData = {
+                    ma: '',
+                    ten: '',
+                    sdt: '',
+                    email: '',
+                    diachi: '',
+                    mst: '',
+                    phanloai: 'LE',
+                    no_dau_ky: 0,    // ← THÊM
+                    han_muc_no: 0,
+                    ghichu: ''
+                };
+            },
+
+            editCustomer(customer) {
+                this.editingCustomer = customer;
+                this.formData = {
+                    ma: customer.ma,
+                    ten: customer.ten,
+                    sdt: customer.sdt || '',
+                    email: customer.email || '',
+                    diachi: customer.diachi || '',
+                    mst: customer.mst || '',
+                    phanloai: customer.phan_loai,
+                    no_dau_ky: 0,    // ← THÊM
+                    han_muc_no: 0,
+                    ghichu: customer.ghichu || ''
+                };
+                this.showAddModal = true;
+            },
+
+            async saveCustomer() {
+                if (!this.formData.ten.trim()) {
+                    return alert('Vui lòng nhập tên khách hàng!');
+                }
+
+                try {
+                    const url = this.editingCustomer
+                        ? `/api/update-customer/${this.editingCustomer.id}/`
+                        : '/add_customer_fast/';
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        },
+                        body: JSON.stringify(this.formData)
                     });
-                },
-                async openView(id) {
-                    this.showModal = true;
-                    const res = await fetch(`/api/customer-detail/${id}/`);
-                    const data = await res.json();
-                    this.customer = data.customer;
-                    this.entries = data.entries;
-                    this.receipts = data.receipts;
-                },
-                formatVND(v) { return new Intl.NumberFormat('vi-VN').format(v || 0) + ' ₫'; }
+
+                    const result = await response.json();
+                    if (result.status === 'success' || response.ok) {
+                        alert(this.editingCustomer ? 'Cập nhật thành công!' : 'Thêm khách hàng thành công!');
+                        this.showAddModal = false;
+                        this.editingCustomer = null;
+                        this.resetForm();
+                        this.loadCustomers();
+                    } else {
+                        alert('Lỗi: ' + (result.message || 'Không thể lưu'));
+                    }
+                } catch (e) {
+                    alert('Lỗi kết nối Server: ' + e.message);
+                }
+            },
+
+            async loadCustomers() {
+                const res = await fetch('/api/get-customers/');
+                this.customers = await res.json();
+            },
+
+            get filteredCustomers() {
+                return this.customers.filter(c => {
+                    const s = this.searchQuery.toLowerCase();
+                    const matchSearch = !this.searchQuery ||
+                        c.ten.toLowerCase().includes(s) ||
+                        c.ma.toLowerCase().includes(s) ||
+                        (c.sdt && c.sdt.includes(s));
+                    const matchType = this.filterType === 'all' || c.phan_loai === this.filterType;
+                    return matchSearch && matchType;
+                });
+            },
+
+            async openView(id) {
+                this.showModal = true;
+                const res = await fetch(`/api/customer-detail/${id}/`);
+                const data = await res.json();
+                this.customer = data.customer;
+                this.entries = data.entries;
+                this.receipts = data.receipts;
+            },
+
+            formatVND(v) {
+                return new Intl.NumberFormat('en-US').format(v || 0) + ' ₫';
             }
         }
+    }
 </script>
 {% endblock %}
