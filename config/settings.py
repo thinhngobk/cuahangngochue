@@ -26,7 +26,6 @@ INSTALLED_APPS = [
     'app_quan_ly',
     'debug_toolbar', 
     'django.contrib.humanize',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 # ← BỎ LOGGING khi production (chỉ để local debug)
