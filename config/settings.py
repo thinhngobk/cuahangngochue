@@ -24,7 +24,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'app_quan_ly',
+    'debug_toolbar', 
     'django.contrib.humanize',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 # ← BỎ LOGGING khi production (chỉ để local debug)
