@@ -14,7 +14,7 @@ LOGIN_REDIRECT_URL = 'pos'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_SAVE_EVERY_REQUEST = False  # ← SỬA: Chỉ save khi có thay đổi
 SESSION_COOKIE_AGE = 12000
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # ← THÊM: Dùng database
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -47,15 +47,14 @@ if DEBUG:
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'django.middleware.gzip.GZipMiddleware',  # ← THÊM: Nén response
+    'django.middleware.gzip.GZipMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',  # ← THÊM LẠI
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
 # Whitenoise settings (gộp lại, bỏ duplicate)
 WHITENOISE_AUTOREFRESH = DEBUG
 WHITENOISE_USE_FINDERS = DEBUG

@@ -246,14 +246,12 @@
                         },
                         body: JSON.stringify({
                             ten: ten,
-                            sdt: this.newCust.sdt,
-                            phanloai: this.newCust.phanloai,
-                            diachi: this.newCust.diachi,
-                            email: this.newCust.email,
-                            mst: this.newCust.mst,
-                            no_dau_ky: this.newCust.no_dau_ky,
-                            han_muc_no: this.newCust.han_muc_no,
-                            ghichu: this.newCust.ghichu
+                            barcode: this.newProd.barcode,
+                            gia_goc: this.parseNumber(this.newProd.gia_goc),
+                            gia_ban: gia,  // ← SỬA: 'gia' thành 'gia_ban'
+                            donvi: this.newProd.donvi,
+                            ton_kho: this.parseNumber(this.newProd.tonkho),  // ← SỬA: 'tonkho' thành 'ton_kho'
+                            ghichu: this.newProd.ghichu
                         })
                     });
 
@@ -310,15 +308,16 @@
                             ten: ten,
                             barcode: this.newProd.barcode,
                             gia_goc: this.parseNumber(this.newProd.gia_goc),
-                            gia: gia,
+                            gia_ban: gia,  // ← SỬA: gia thành gia_ban
                             donvi: this.newProd.donvi,
-                            tonkho: this.parseNumber(this.newProd.tonkho),
+                            ton_kho: this.parseNumber(this.newProd.tonkho),  // ← SỬA: tonkho thành ton_kho
                             ghichu: this.newProd.ghichu
                         })
                     });
+
                     const result = await response.json();
                     if (result.status === 'success') {
-                        alert(`Đã thêm sản phẩm: ${result.product.tensanpham || result.product.ten}`);
+                        alert(`Đã thêm sản phẩm: ${result.product.ten}`);
 
                         this.addItem({
                             id: result.product.id,
@@ -593,8 +592,7 @@
                     <h2 class="text-lg font-black uppercase text-blue-800 tracking-tighter">
                         Thanh toán
                     </h2>
-                    <input type="date" x-model="ngayLap"
-                        placeholder="Chọn ngày lập"
+                    <input type="date" x-model="ngayLap" placeholder="Chọn ngày lập"
                         class="px-3 py-1.5 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:outline-none font-semibold text-sm">
                 </div>
 
