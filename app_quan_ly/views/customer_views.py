@@ -9,7 +9,8 @@ from django.db import transaction
 from django.db.models import Q
 from unidecode import unidecode
 from app_quan_ly.models import KhachHang
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
+from django.views.decorators.http import require_POST
 @transaction.atomic
 def edit_customer(request, kh_id):
     """Sửa thông tin khách hàng"""
@@ -126,6 +127,7 @@ def get_customers_api(request):
         'du_no': float(kh.du_no_hien_tai),
         'no_dau_ky': float(kh.no_dau_ky),  # ← THÊM
         'han_muc_no': float(kh.han_muc_no),
+        'is_active': kh.is_active,
         'mst': kh.mst or '',
         'ghichu': kh.ghichu or ''
     } for kh in customers]
@@ -310,3 +312,17 @@ def get_customers_paginated_api(request):
     }
     
     return JsonResponse(data)
+@require_POST
+def toggle_customer_active(request, customer_id):
+    try:
+        kh = get_object_or_404(KhachHang, id=customer_id)
+        data = json.loads(request.body)
+        kh.is_active = data.get('is_active')
+        kh.save(update_fields=['is_active'])
+        
+        return JsonResponse({
+            'status': 'success',
+            'is_active': kh.is_active
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

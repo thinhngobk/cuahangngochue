@@ -5,7 +5,7 @@
 
 {% block content %}
 {% csrf_token %}
-<div class="max-w-7xl mx-auto p-6" x-data="productManager()">
+<div class="max-w-full mx-auto p-4" x-data="productManager()">
     <style>
         [x-cloak] {
             display: none !important;
@@ -125,10 +125,27 @@
 
     <!-- HEADER -->
     <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 mb-6 shadow-lg">
-        <div class="flex justify-between items-center">
-            <h1 class="text-3xl font-black text-white tracking-tight">📦 QUẢN LÝ SẢN PHẨM</h1>
-            <div class="text-white text-lg font-semibold">
-                Tổng: <span class="font-black text-2xl" x-text="products.length"></span> sản phẩm
+        <!-- Pagination -->
+        <div class="flex justify-between items-center p-4 border-t border-slate-200">
+            <div class="text-sm text-slate-600">
+                Hiển thị {{ page_obj.start_index }}-{{ page_obj.end_index }} / {{ total_products }} sản phẩm
+            </div>
+            <div class="flex gap-2">
+                {% if page_obj.has_previous %}
+                <a href="?page=1"
+                    class="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-bold">«</a>
+                <a href="?page={{ page_obj.previous_page_number }}"
+                    class="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-bold">‹</a>
+                {% endif %}
+
+                <span class="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold">{{ page_obj.number }}</span>
+
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}"
+                    class="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-bold">›</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}"
+                    class="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-bold">»</a>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -142,6 +159,7 @@
                     class="w-full px-4 py-3 border-2 border-blue-100 rounded-xl focus:border-blue-500 outline-none font-semibold"
                     placeholder="Tên sản phẩm, mã, barcode...">
             </div>
+
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-2">📊 Trạng thái</label>
                 <select x-model="filterStatus"
@@ -156,6 +174,11 @@
                     class="w-full px-6 py-3 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 uppercase text-sm cursor-pointer z-50 relative"
                     style="background: linear-gradient(to right, #10b981, #059669) !important; color: white !important; pointer-events: auto !important; border: none !important;">
                     <span style="color: white !important;">➕ Thêm mới</span>
+                </button>
+                <button @click="showImportModal = true" type="button"
+                    class="w-full px-6 py-3 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 uppercase text-sm cursor-pointer ml-2"
+                    style="background: linear-gradient(to right, #10b981, #059669) !important;">
+                    <span style="color: white !important;">📥 Import Excel</span>
                 </button>
             </div>
         </div>
@@ -280,7 +303,33 @@
                     </template>
                 </tbody>
             </table>
-
+                <!-- Pagination -->
+                <div class="flex justify-between items-center p-4 border-t bg-slate-50">
+                    <div class="text-sm font-bold text-slate-600">
+                        Trang <span x-text="currentPage"></span> / <span x-text="totalPages || 1"></span>
+                        (Hiển thị <span x-text="paginatedProducts.length"></span> / <span
+                            x-text="filteredProducts.length"></span>)
+                    </div>
+                    <div class="flex gap-2">
+                        <button @click="currentPage = 1" :disabled="currentPage === 1"
+                            class="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-bold disabled:opacity-30 disabled:cursor-not-allowed">
+                            ««
+                        </button>
+                        <button @click="prevPage()" :disabled="currentPage === 1"
+                            class="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-bold disabled:opacity-30 disabled:cursor-not-allowed">
+                            ‹
+                        </button>
+                        <span class="px-4 py-2 bg-blue-600 text-white rounded-lg font-black" x-text="currentPage"></span>
+                        <button @click="nextPage()" :disabled="currentPage >= totalPages"
+                            class="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-bold disabled:opacity-30 disabled:cursor-not-allowed">
+                            ›
+                        </button>
+                        <button @click="currentPage = totalPages" :disabled="currentPage >= totalPages"
+                            class="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-bold disabled:opacity-30 disabled:cursor-not-allowed">
+                            »»
+                        </button>
+                    </div>
+                </div>
             <template x-if="filteredProducts.length === 0">
                 <div class="p-24 text-center">
                     <div class="text-6xl mb-4">📦</div>
@@ -290,131 +339,389 @@
         </div>
     </div>
     <!-- MODAL: ADD/EDIT PRODUCT -->
-<div x-show="showAddModal" x-cloak x-init="console.log('Modal element loaded')" @click.self="showAddModal = false"
-    class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl border border-slate-200 max-h-[90vh] flex flex-col"
-        @click.stop>
+    <div x-show="showAddModal" x-cloak x-init="console.log('Modal element loaded')" @click.self="showAddModal = false"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl border border-slate-200 max-h-[90vh] flex flex-col"
+            @click.stop>
 
-        <!-- HEADER - Cố định -->
-        <div class="flex items-center p-6 pb-4 border-b border-slate-100 shrink-0">
-            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
+            <!-- HEADER - Cố định -->
+            <div class="flex items-center p-6 pb-4 border-b border-slate-100 shrink-0">
+                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter"
+                    x-text="editingProduct ? '✏️ Chỉnh sửa sản phẩm' : '➕ Thêm sản phẩm mới'"></h3>
+                <button @click="showAddModal = false" class="ml-auto text-slate-400 hover:text-slate-600 p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
-            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter"
-                x-text="editingProduct ? '✏️ Chỉnh sửa sản phẩm' : '➕ Thêm sản phẩm mới'"></h3>
-            <button @click="showAddModal = false" class="ml-auto text-slate-400 hover:text-slate-600 p-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
+
+            <!-- CONTENT - Cuộn -->
+            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <div class="space-y-4">
+                    <!-- Row 1: Tên sản phẩm -->
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Tên sản phẩm *</label>
+                        <input type="text" x-model="formData.ten"
+                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold"
+                            placeholder="Nhập tên sản phẩm...">
+                    </div>
+
+                    <!-- Row 2: Barcode + ĐVT -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Barcode</label>
+                            <input type="text" x-model="formData.barcode"
+                                class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold"
+                                placeholder="Mã vạch">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Đơn vị tính</label>
+                            <input type="text" x-model="formData.donvi"
+                                class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold"
+                                placeholder="Cái, Bộ, Thùng...">
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Giá gốc + Giá bán -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Giá gốc (đ)</label>
+                            <input type="number" x-model="formData.gia_goc"
+                                class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold text-right"
+                                placeholder="0">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Giá bán (đ) *</label>
+                            <input type="number" x-model="formData.gia_ban"
+                                class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold text-right"
+                                placeholder="0">
+                        </div>
+                    </div>
+
+                    <!-- Row 4: Tồn kho + Trạng thái -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Tồn kho</label>
+                            <input type="number" x-model="formData.ton_kho"
+                                class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold text-right"
+                                placeholder="0">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Trạng thái</label>
+                            <select x-model="formData.is_active"
+                                class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold">
+                                <option :value="true">✅ Đang bán</option>
+                                <option :value="false">❌ Ngừng bán</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Row 5: Ghi chú -->
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Ghi chú</label>
+                        <textarea x-model="formData.ghichu" rows="3"
+                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-medium"
+                            placeholder="Thông tin thêm..."></textarea>
+                    </div>
+                </div>
+
+                <!-- FOOTER - Cố định -->
+                <div class="flex gap-3 p-6 pt-4 border-t border-slate-100 shrink-0">
+                    <button @click="showAddModal = false"
+                        class="px-8 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition-all uppercase text-sm">
+                        Hủy
+                    </button>
+                    <button @click="saveProduct"
+                        class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black rounded-2xl shadow-lg transition-all uppercase text-sm">
+                        💾 <span x-text="editingProduct ? 'Cập nhật' : 'Thêm mới'"></span>
+                    </button>
+                </div>
+            </div>
         </div>
+    </div>
+    <!-- MODAL: IMPORT EXCEL -->
+    <div x-show="showImportModal" x-cloak @click.self="showImportModal = false"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl border border-slate-200" @click.stop>
 
-        <!-- CONTENT - Cuộn -->
-        <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
-            <div class="space-y-4">
-                <!-- Row 1: Tên sản phẩm -->
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Tên sản phẩm *</label>
-                    <input type="text" x-model="formData.ten"
-                        class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold"
-                        placeholder="Nhập tên sản phẩm...">
+            <!-- HEADER -->
+            <div class="flex items-center p-6 pb-4 border-b border-slate-100">
+                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
                 </div>
-
-                <!-- Row 2: Barcode + ĐVT -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Barcode</label>
-                        <input type="text" x-model="formData.barcode"
-                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold"
-                            placeholder="Mã vạch">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Đơn vị tính</label>
-                        <input type="text" x-model="formData.donvi"
-                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold"
-                            placeholder="Cái, Bộ, Thùng...">
-                    </div>
-                </div>
-
-                <!-- Row 3: Giá gốc + Giá bán -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Giá gốc (đ)</label>
-                        <input type="number" x-model="formData.gia_goc"
-                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold text-right"
-                            placeholder="0">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Giá bán (đ) *</label>
-                        <input type="number" x-model="formData.gia_ban"
-                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold text-right"
-                            placeholder="0">
-                    </div>
-                </div>
-
-                <!-- Row 4: Tồn kho + Trạng thái -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Tồn kho</label>
-                        <input type="number" x-model="formData.ton_kho"
-                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold text-right"
-                            placeholder="0">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Trạng thái</label>
-                        <select x-model="formData.is_active"
-                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-bold">
-                            <option :value="true">✅ Đang bán</option>
-                            <option :value="false">❌ Ngừng bán</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Row 5: Ghi chú -->
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Ghi chú</label>
-                    <textarea x-model="formData.ghichu" rows="3"
-                        class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none font-medium"
-                        placeholder="Thông tin thêm..."></textarea>
-                </div>
-            </div>
-
-            <!-- FOOTER - Cố định -->
-            <div class="flex gap-3 p-6 pt-4 border-t border-slate-100 shrink-0">
-                <button @click="showAddModal = false"
-                    class="px-8 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition-all uppercase text-sm">
-                    Hủy
-                </button>
-                <button @click="saveProduct"
-                    class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black rounded-2xl shadow-lg transition-all uppercase text-sm">
-                    💾 <span x-text="editingProduct ? 'Cập nhật' : 'Thêm mới'"></span>
+                <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter">📥 Import sản phẩm từ Excel
+                </h3>
+                <button @click="showImportModal = false" class="ml-auto text-slate-400 hover:text-slate-600 p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
             </div>
+
+            <!-- FORM -->
+            <form method="post" enctype="multipart/form-data" action="{% url 'product_import' %}">
+                {% csrf_token %}
+                <div class="p-6 space-y-4">
+
+                    <!-- Download Template -->
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-4 text-white">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="font-black text-lg mb-1">📄 File Excel Mẫu</div>
+                                <div class="text-sm opacity-90">Tải về file mẫu để import dễ dàng</div>
+                            </div>
+                            <a href="{% static 'templates/mau_import_sanpham.xlsx' %}" download
+                                class="px-6 py-3 bg-white text-blue-600 font-black rounded-xl hover:shadow-lg transition-all uppercase text-sm">
+                                ⬇️ Tải về
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- File Input -->
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">File Excel *</label>
+                        <input type="file" name="excel_file" accept=".xlsx,.xls" required
+                            class="w-full p-3 border-2 border-slate-100 rounded-2xl focus:border-green-500 outline-none font-bold">
+                    </div>
+
+                    <!-- Format Guide -->
+                    <div class="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4">
+                        <div class="font-black text-blue-800 mb-2 text-sm">📋 CẤU TRÚC FILE EXCEL:</div>
+                        <div class="grid grid-cols-2 gap-2 text-xs font-semibold text-blue-700">
+                            <div>• <code class="bg-blue-200 px-2 py-1 rounded">tensanpham</code> (bắt buộc)</div>
+                            <div>• <code class="bg-blue-200 px-2 py-1 rounded">donvitinh</code> (bắt buộc)</div>
+                            <div>• <code class="bg-blue-200 px-2 py-1 rounded">dongiagoc</code> (bắt buộc)</div>
+                            <div>• <code class="bg-blue-200 px-2 py-1 rounded">dongiaban</code> (bắt buộc)</div>
+                            <div>• <code class="bg-blue-200 px-2 py-1 rounded">tonkho</code> (tùy chọn)</div>
+                            <div>• <code class="bg-blue-200 px-2 py-1 rounded">barcode</code> (tùy chọn)</div>
+                            <div>• <code class="bg-blue-200 px-2 py-1 rounded">ghichu</code> (tùy chọn)</div>
+                        </div>
+                    </div>
+
+                    <!-- Info -->
+                    <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
+                        <div class="font-black text-amber-800 text-sm flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Quy tắc Import:
+                        </div>
+                        <div class="text-sm font-semibold text-amber-700 mt-2">
+                            • Trùng <strong>tensanphamkhongdau + donvitinh</strong> → Cập nhật giá<br>
+                            • Khác → Tạo sản phẩm mới
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FOOTER -->
+                <div class="flex gap-3 p-6 pt-4 border-t border-slate-100">
+                    <button type="button" @click="showImportModal = false"
+                        class="px-8 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition-all uppercase text-sm">
+                        Hủy
+                    </button>
+                    <button type="submit"
+                        class="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-black rounded-2xl shadow-lg transition-all uppercase text-sm">
+                        📥 Import ngay
+                    </button>
+                </div>
+            </form>
+
         </div>
     </div>
 </div>
 {% endblock %}
 {% block extra_js %}
 <script>
-        // Đảm bảo function được định nghĩa TRƯỚC khi Alpine.js khởi tạo
-        // Định nghĩa function ngay lập tức, không đợi DOM ready
-        (function () {
-            window.formatVND = function (value) {
-                if (!value && value !== 0) return '0';
-                return new Intl.NumberFormat('en-US').format(value);
-            };
+    // Đảm bảo function được định nghĩa TRƯỚC khi Alpine.js khởi tạo
+    // Định nghĩa function ngay lập tức, không đợi DOM ready
+    (function () {
+        window.formatVND = function (value) {
+            if (!value && value !== 0) return '0';
+            return new Intl.NumberFormat('en-US').format(value);
+        };
 
-            window.productManager = function () {
-                return {
-                    products: [],
-                    searchQuery: '',
-                    filterStatus: 'all',
-                    showAddModal: false,
-                    editingProduct: null,
-                    formData: {
+        window.productManager = function () {
+            return {
+                products: JSON.parse(document.getElementById('products-data')?.textContent || '[]'),
+                searchQuery: '',
+                filterStatus: 'all',
+                showAddModal: false,
+                editingProduct: null,
+                currentPage: 1,
+                perPage: 50,
+                showImportModal: false,
+                formData: {
+                    ma: '',
+                    barcode: '',
+                    ten: '',
+                    donvi: 'Cái',
+                    gia_goc: '',
+                    gia_ban: '',
+                    ton_kho: 0,
+                    is_active: true,
+                    ghichu: ''
+                },
+
+                init() {
+                    console.log('Init starting...');
+                    this.showAddModal = false;
+                    console.log('showAddModal set to:', this.showAddModal);
+                    this.editingProduct = null;
+                    this.resetForm();
+                    this.loadProducts();
+                },
+
+                openAddModal() {
+                    console.log('openAddModal() called');
+                    this.editingProduct = null;
+                    this.resetForm();
+                    this.showAddModal = true;
+                    console.log('showAddModal set to:', this.showAddModal);
+                },
+
+                get filteredProducts() {
+                    let filtered = this.products;
+
+                    if (this.searchQuery) {
+                        const q = this.searchQuery.toLowerCase();
+                        filtered = filtered.filter(p =>
+                            p.ten.toLowerCase().includes(q) ||
+                            p.ma.toLowerCase().includes(q) ||
+                            (p.barcode && p.barcode.toLowerCase().includes(q))
+                        );
+                    }
+
+                    if (this.filterStatus !== 'all') {
+                        filtered = filtered.filter(p =>
+                            this.filterStatus === 'active' ? p.is_active : !p.is_active
+                        );
+                    }
+
+                    return filtered;
+                },
+
+                get paginatedProducts() {
+                    const start = (this.currentPage - 1) * this.perPage;
+                    const end = start + this.perPage;
+                    return this.filteredProducts.slice(start, end);
+                },
+
+                get totalPages() {
+                    return Math.ceil(this.filteredProducts.length / this.perPage);
+                },
+
+                nextPage() {
+                    if (this.currentPage < this.totalPages) this.currentPage++;
+                },
+
+                prevPage() {
+                    if (this.currentPage > 1) this.currentPage--;
+                },
+
+                async loadProducts() {
+                    try {
+                        const res = await fetch('/api/get-products/');
+                        const data = await res.json();
+                        this.products = data;
+                    } catch (e) {
+                        alert('Lỗi tải dữ liệu: ' + e);
+                    }
+                },
+
+                editProduct(product) {
+                    this.editingProduct = product;
+                    this.formData = {
+                        ma: product.ma || '',
+                        barcode: product.barcode || '',
+                        ten: product.ten || '',
+                        donvi: product.donvi || 'Cái',
+                        gia_goc: product.gia_goc || '',
+                        gia_ban: product.gia_ban || '',
+                        ton_kho: product.ton_kho || 0,
+                        is_active: product.is_active !== undefined ? product.is_active : true,
+                        ghichu: product.ghichu || ''
+                    };
+                    this.showAddModal = true;
+                },
+
+                async saveProduct() {
+                    if (!this.formData.ten || !this.formData.ten.trim()) {
+                        return alert('Vui lòng nhập tên sản phẩm!');
+                    }
+
+                    // Chuẩn hóa dữ liệu
+                    const dataToSend = {
+                        ten: this.formData.ten.trim(),
+                        barcode: (this.formData.barcode || '').trim(),
+                        donvi: (this.formData.donvi || 'Cái').trim(),
+                        gia_goc: parseFloat(this.formData.gia_goc) || 0,
+                        gia_ban: parseFloat(this.formData.gia_ban) || 0,
+                        ton_kho: parseInt(this.formData.ton_kho) || 0,
+                        is_active: this.formData.is_active !== undefined ? this.formData.is_active : true,
+                        ghichu: (this.formData.ghichu || '').trim()
+                    };
+
+                    try {
+                        const url = this.editingProduct ? `/api/update-product/${this.editingProduct.id}/` : '/add_product_fast/';
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': this.getCSRFToken()
+                            },
+                            body: JSON.stringify(dataToSend)
+                        });
+
+                        const result = await res.json();
+                        if (result.status === 'success') {
+                            alert(this.editingProduct ? 'Cập nhật thành công!' : 'Thêm mới thành công!');
+                            this.showAddModal = false;
+                            this.editingProduct = null;
+                            this.resetForm();
+                            this.loadProducts();
+                        } else {
+                            alert('Lỗi: ' + (result.message || 'Có lỗi xảy ra'));
+                        }
+                    } catch (e) {
+                        alert('Lỗi: ' + e.message);
+                        console.error('Error:', e);
+                    }
+                },
+
+                async toggleStatus(product) {
+                    if (!confirm(`${product.is_active ? 'Ngừng bán' : 'Kích hoạt'} sản phẩm "${product.ten}"?`)) return;
+
+                    try {
+                        const res = await fetch(`/api/toggle-product-status/${product.id}/`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': this.getCSRFToken()
+                            }
+                        });
+                        const result = await res.json();
+                        if (result.status === 'success') {
+                            this.loadProducts();
+                        }
+                    } catch (e) {
+                        alert('Lỗi: ' + e);
+                    }
+                },
+
+                resetForm() {
+                    this.formData = {
                         ma: '',
                         barcode: '',
                         ten: '',
@@ -424,168 +731,34 @@
                         ton_kho: 0,
                         is_active: true,
                         ghichu: ''
-                    },
+                    };
+                },
 
-                    init() {
-                        console.log('Init starting...');
-                        this.showAddModal = false;
-                        console.log('showAddModal set to:', this.showAddModal);
-                        this.editingProduct = null;
-                        this.resetForm();
-                        this.loadProducts();
-                    },
+                getCSRFToken() {
+                    return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                        document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+                },
 
-                    openAddModal() {
-                        console.log('openAddModal() called');
-                        this.editingProduct = null;
-                        this.resetForm();
-                        this.showAddModal = true;
-                        console.log('showAddModal set to:', this.showAddModal);
-                    },
-
-                    get filteredProducts() {
-                        return this.products.filter(p => {
-                            const matchSearch = !this.searchQuery ||
-                                p.ten.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-                                p.ma.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-                                (p.barcode && p.barcode.toLowerCase().includes(this.searchQuery.toLowerCase()));
-
-                            const matchStatus = this.filterStatus === 'all' ||
-                                (this.filterStatus === 'active' && p.is_active) ||
-                                (this.filterStatus === 'inactive' && !p.is_active);
-
-                            return matchSearch && matchStatus;
-                        });
-                    },
-
-                    async loadProducts() {
-                        try {
-                            const res = await fetch('/api/get-products/');
-                            const data = await res.json();
-                            this.products = data;
-                        } catch (e) {
-                            alert('Lỗi tải dữ liệu: ' + e);
-                        }
-                    },
-
-                    editProduct(product) {
-                        this.editingProduct = product;
-                        this.formData = {
-                            ma: product.ma || '',
-                            barcode: product.barcode || '',
-                            ten: product.ten || '',
-                            donvi: product.donvi || 'Cái',
-                            gia_goc: product.gia_goc || '',
-                            gia_ban: product.gia_ban || '',
-                            ton_kho: product.ton_kho || 0,
-                            is_active: product.is_active !== undefined ? product.is_active : true,
-                            ghichu: product.ghichu || ''
-                        };
-                        this.showAddModal = true;
-                    },
-
-                    async saveProduct() {
-                        if (!this.formData.ten || !this.formData.ten.trim()) {
-                            return alert('Vui lòng nhập tên sản phẩm!');
-                        }
-
-                        // Chuẩn hóa dữ liệu
-                        const dataToSend = {
-                            ten: this.formData.ten.trim(),
-                            barcode: (this.formData.barcode || '').trim(),
-                            donvi: (this.formData.donvi || 'Cái').trim(),
-                            gia_goc: parseFloat(this.formData.gia_goc) || 0,
-                            gia_ban: parseFloat(this.formData.gia_ban) || 0,
-                            ton_kho: parseInt(this.formData.ton_kho) || 0,
-                            is_active: this.formData.is_active !== undefined ? this.formData.is_active : true,
-                            ghichu: (this.formData.ghichu || '').trim()
-                        };
-
-                        try {
-                            const url = this.editingProduct ? `/api/update-product/${this.editingProduct.id}/` : '/add_product_fast/';
-                            const res = await fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRFToken': this.getCSRFToken()
-                                },
-                                body: JSON.stringify(dataToSend)
-                            });
-
-                            const result = await res.json();
-                            if (result.status === 'success') {
-                                alert(this.editingProduct ? 'Cập nhật thành công!' : 'Thêm mới thành công!');
-                                this.showAddModal = false;
-                                this.editingProduct = null;
-                                this.resetForm();
-                                this.loadProducts();
-                            } else {
-                                alert('Lỗi: ' + (result.message || 'Có lỗi xảy ra'));
-                            }
-                        } catch (e) {
-                            alert('Lỗi: ' + e.message);
-                            console.error('Error:', e);
-                        }
-                    },
-
-                    async toggleStatus(product) {
-                        if (!confirm(`${product.is_active ? 'Ngừng bán' : 'Kích hoạt'} sản phẩm "${product.ten}"?`)) return;
-
-                        try {
-                            const res = await fetch(`/api/toggle-product-status/${product.id}/`, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRFToken': this.getCSRFToken()
-                                }
-                            });
-                            const result = await res.json();
-                            if (result.status === 'success') {
-                                this.loadProducts();
-                            }
-                        } catch (e) {
-                            alert('Lỗi: ' + e);
-                        }
-                    },
-
-                    resetForm() {
-                        this.formData = {
-                            ma: '',
-                            barcode: '',
-                            ten: '',
-                            donvi: 'Cái',
-                            gia_goc: '',
-                            gia_ban: '',
-                            ton_kho: 0,
-                            is_active: true,
-                            ghichu: ''
-                        };
-                    },
-
-                    getCSRFToken() {
-                        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                            document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
-                    },
-
-                    formatVND: window.formatVND
-                }
-            };
-        })();
-
-        // Debug và fallback cho button
-        document.addEventListener('DOMContentLoaded', function () {
-            console.log('DOM loaded, productManager defined:', typeof window.productManager);
-            console.log('Alpine available:', typeof Alpine !== 'undefined');
-
-            // Đợi Alpine.js load xong
-            if (typeof Alpine !== 'undefined') {
-                Alpine.nextTick(() => {
-                    console.log('Alpine.js ready');
-                });
-            } else {
-                document.addEventListener('alpine:init', () => {
-                    console.log('Alpine.js initialized');
-                });
+                formatVND: window.formatVND
             }
-        });
+        };
+    })();
+
+    // Debug và fallback cho button
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log('DOM loaded, productManager defined:', typeof window.productManager);
+        console.log('Alpine available:', typeof Alpine !== 'undefined');
+
+        // Đợi Alpine.js load xong
+        if (typeof Alpine !== 'undefined') {
+            Alpine.nextTick(() => {
+                console.log('Alpine.js ready');
+            });
+        } else {
+            document.addEventListener('alpine:init', () => {
+                console.log('Alpine.js initialized');
+            });
+        }
+    });
 </script>
 {% endblock %}

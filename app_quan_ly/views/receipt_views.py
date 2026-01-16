@@ -12,7 +12,7 @@ from django.core.paginator import Paginator
 from django.contrib.auth.models import User
 from app_quan_ly.models import KhachHang, PhieuThu, HoaDonBan,SoCaiCongNo
 from .helper_views import update_ledger
-
+from django.views.decorators.http import require_POST
 
 def save_receipt(request):
     """API tạo phiếu thu (từ frontend)"""
@@ -91,48 +91,72 @@ def danh_sach_phieu_thu(request):
         'nguoi_lap_id': nguoi_lap_id
     })
 
-
 @transaction.atomic
+@require_POST
 def luu_phieu_thu_nhanh(request):
     """Lưu hoặc cập nhật phiếu thu"""
-    if request.method == 'POST':
+    try:
         phieu_id = request.POST.get('phieu_id')
         
-        # ✅ THÊM CHECK KHI SỬA
-        if phieu_id:  # Nếu đang sửa
+        # Nếu đang sửa
+        if phieu_id:
             phieu_thu = get_object_or_404(PhieuThu, id=phieu_id)
             
-            # ✅ CHẶN SỬA PHIẾU ĐÍNH KÈM HÓA ĐƠN
+            # Chặn sửa phiếu đính kèm hóa đơn
             if phieu_thu.mahoadon:
-                messages.error(request, f'❌ Không thể sửa phiếu thu đính kèm hóa đơn {phieu_thu.mahoadon}. Vui lòng sửa từ hóa đơn.')
-                return redirect('danh_sach_phieu_thu')
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'❌ Không thể sửa phiếu thu đính kèm hóa đơn {phieu_thu.mahoadon}'
+                }, status=400)
             
             # Cập nhật thông tin
             phieu_thu.khachhang_id = request.POST.get('khachhang_id')
             phieu_thu.sotienthu = request.POST.get('so_tien')
-            phieu_thu.ghichu = request.POST.get('ghi_chu')
+            phieu_thu.hinhthucthanhtoan = request.POST.get('hinh_thuc', 'Tiền mặt')
+            phieu_thu.ghichu = request.POST.get('ghi_chu', '')
             phieu_thu.save()
             
-            messages.success(request, '✅ Đã cập nhật phiếu thu')
+            return JsonResponse({
+                'status': 'success',
+                'message': '✅ Đã cập nhật phiếu thu',
+                'phieu_id': phieu_thu.id
+            })
         else:
-            # ✅ SỬA: Thêm khai báo biến
+            # Tạo mới
             kh_id = request.POST.get('khachhang_id')
             so_tien = request.POST.get('so_tien')
+            hinh_thuc = request.POST.get('hinh_thuc', 'Tiền mặt')
             ghi_chu = request.POST.get('ghi_chu', '')
+            
+            # Validate
+            if not kh_id or not so_tien:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': '❌ Thiếu thông tin khách hàng hoặc số tiền'
+                }, status=400)
             
             trang_thai = 'approved' if request.user.is_superuser else 'pending'
             
             phieu_thu = PhieuThu.objects.create(
                 khachhang_id=kh_id,
                 sotienthu=so_tien,
+                hinhthucthanhtoan=hinh_thuc,
                 ghichu=ghi_chu,
                 trang_thai_duyet=trang_thai,
                 user=request.user,
-            )       
-            messages.success(request, '✅ Đã tạo phiếu thu mới')
+            )
             
-    return redirect('danh_sach_phieu_thu')
-
+            return JsonResponse({
+                'status': 'success',
+                'message': '✅ Đã tạo phiếu thu mới',
+                'phieu_id': phieu_thu.id
+            })
+    
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'❌ Lỗi: {str(e)}'
+        }, status=500)
 @transaction.atomic
 def huy_phieu_thu(request, pk):
     """Hủy phiếu thu"""

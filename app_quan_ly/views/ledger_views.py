@@ -104,12 +104,12 @@ def xem_so_cai(request):
     du_no_cuoi_ky = 0
     tong_tang = 0
     tong_giam = 0
-    
-    # ✅ THÊM: Biến đối chiếu
     audit_result = None
+    selected_customer = None  # ← THÊM
 
     if kh_id:
         kh = get_object_or_404(KhachHang, id=kh_id)
+        selected_customer = kh  # ← THÊM
         qs = SoCaiCongNo.objects.filter(khachhang=kh).select_related('user')
 
         # Tính dư nợ đầu kỳ
@@ -134,8 +134,22 @@ def xem_so_cai(request):
         last_rec = so_cai_list.last()
         du_no_cuoi_ky = last_rec.du_no_tuc_thoi if last_rec else du_no_dau_ky
         
-        # ✅ THÊM: Đối chiếu tự động
+        # Đối chiếu tự động
         audit_result = doi_chieu_cong_no_khach_hang(kh_id)
+
+    return render(request, 'so_cai_cong_no.html', {
+        # ← XÓA: 'danh_sach_khach_hang': KhachHang.objects.all(),
+        'selected_customer': selected_customer,  # ← THÊM: Chỉ trả khách đang xem
+        'so_cai_list': so_cai_list,
+        'khach_hang_id': kh_id,  # ← SỬA: Đổi tên cho rõ
+        'tu_ngay': tu_ngay,
+        'den_ngay': den_ngay,
+        'du_no_dau_ky': du_no_dau_ky,
+        'du_no_cuoi_ky': du_no_cuoi_ky,
+        'tong_tang': tong_tang,
+        'tong_giam': tong_giam,
+        'audit': audit_result,
+    })
 
     return render(request, 'so_cai_cong_no.html', {
         'danh_sach_khach_hang': KhachHang.objects.all(),

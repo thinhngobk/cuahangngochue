@@ -10,10 +10,38 @@ from django.db.models import Q, Case, When, Value, IntegerField
 from unidecode import unidecode
 from app_quan_ly.models import SanPham
 from django.shortcuts import render
+import pandas as pd
+from django.contrib import messages
+from django.core.paginator import Paginator
 
 def product_manager(request):
-    """Trang quản lý sản phẩm"""
-    return render(request, 'product_manager.html')
+    products = SanPham.objects.filter(user=request.user).order_by('-ngaycapnhat')
+    
+    # Phân trang 50 sản phẩm/trang
+    paginator = Paginator(products, 50)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    products_data = [{
+        'id': p.id,
+        'ma': p.masanpham,
+        'ten': p.tensanpham,
+        'ten_khong_dau': p.tensanphamkhongdau,
+        'barcode': p.barcode or '',
+        'donvi': p.donvitinh,
+        'gia_goc': float(p.dongiagoc),
+        'gia_ban': float(p.dongiaban),
+        'ton_kho': p.tonkho,
+        'ghichu': p.ghichu or '',
+        'is_active': p.is_active
+    } for p in page_obj]
+    
+    context = {
+        'products_json': json.dumps(products_data, ensure_ascii=False),
+        'page_obj': page_obj,
+        'total_products': paginator.count
+    }
+    return render(request, 'product_manager.html', context)
 def search_san_pham(request):
     """
     Tìm kiếm sản phẩm TỐI ƯU cho 4000 SP
@@ -71,18 +99,23 @@ def search_san_pham(request):
         
         html += f"""
         <div class="p-3 hover:bg-blue-50 cursor-pointer border-b {border_class} flex items-center space-x-4 transition-colors" 
-            @click="selectedProduct = {{
-                id: {sp.id}, 
-                ma: '{sp.masanpham}', 
-                ten: '{ten_sp_safe}', 
-                gia: {float(sp.dongiaban)}, 
-                gia_goc: {float(sp.dongiagoc)},
-                donvi: '{dvt}',
-                ton: {sp.tonkho}
-            }}; 
-            searchProdQuery = '{ten_sp_safe}'; 
-            document.getElementById('search-results').innerHTML = '';
-            $nextTick(() => $refs.qtyInput?.focus())">
+            @click.prevent="
+                selectedProduct = {{
+                    id: {sp.id}, 
+                    ma: '{sp.masanpham}', 
+                    ten: '{ten_sp_safe}', 
+                    gia: {float(sp.dongiaban)}, 
+                    gia_goc: {float(sp.dongiagoc)},
+                    donvi: '{dvt}',
+                    ton: {sp.tonkho}
+                }}; 
+                productSearch = '{ten_sp_safe}'; 
+                document.getElementById('search-results').innerHTML = '';
+                setTimeout(() => {{
+                    let inp = document.querySelector('input[x-ref=qtyInput]');
+                    if(inp) {{ inp.focus(); inp.select(); }}
+                }}, 150);
+            ">
             <div class="flex-1">
                 <div class="font-bold {'text-emerald-900' if is_top else 'text-blue-900'}">{sp.tensanpham} {badge}</div>
                 <div class="text-xs text-gray-500">
@@ -239,3 +272,78 @@ def toggle_product_status(request, product_id):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
     return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+def import_products(request):
+    if request.method != 'POST':
+        return redirect('product_manager')
+    
+    excel_file = request.FILES.get('excel_file')
+    if not excel_file:
+        messages.error(request, 'Vui lòng chọn file Excel')
+        return redirect('product_manager')
+    
+    try:
+        # Đọc file Excel
+        df = pd.read_excel(excel_file)
+        
+        # Kiểm tra columns (dùng tên cột từ model)
+        required_cols = ['tensanpham', 'donvitinh', 'dongiagoc', 'dongiaban']
+        if not all(col in df.columns for col in required_cols):
+            messages.error(request, f'File Excel thiếu các cột bắt buộc: {", ".join(required_cols)}')
+            return redirect('product_manager')
+        
+        created_count = 0
+        updated_count = 0
+        
+        with transaction.atomic():
+            for _, row in df.iterrows():
+                tensanpham = str(row['tensanpham']).strip()
+                donvitinh = str(row['donvitinh']).strip()
+                dongiagoc = float(row['dongiagoc'])
+                dongiaban = float(row['dongiaban'])
+                tonkho = int(row.get('tonkho', 0)) if 'tonkho' in df.columns and pd.notna(row.get('tonkho')) else 0
+                barcode = str(row.get('barcode', '')).strip() if 'barcode' in df.columns and pd.notna(row.get('barcode')) else ''
+                ghichu = str(row.get('ghichu', '')).strip() if 'ghichu' in df.columns and pd.notna(row.get('ghichu')) else ''
+                
+                # Tạo tên không dấu
+                from unidecode import unidecode
+                tensanphamkhongdau = unidecode(tensanpham).lower()
+                
+                # Tìm sản phẩm trùng
+                existing = SanPham.objects.filter(
+                    tensanphamkhongdau=tensanphamkhongdau,
+                    donvitinh=donvitinh
+                ).first()
+                
+                if existing:
+                    # Cập nhật giá
+                    existing.dongiagoc = dongiagoc
+                    existing.dongiaban = dongiaban
+                    if tonkho:
+                        existing.tonkho = tonkho
+                    if barcode:
+                        existing.barcode = barcode
+                    if ghichu:
+                        existing.ghichu = ghichu
+                    existing.save()
+                    updated_count += 1
+                else:
+                    # Tạo mới
+                    SanPham.objects.create(
+                        tensanpham=tensanpham,
+                        tensanphamkhongdau=tensanphamkhongdau,
+                        donvitinh=donvitinh,
+                        dongiagoc=dongiagoc,
+                        dongiaban=dongiaban,
+                        tonkho=tonkho,
+                        barcode=barcode,
+                        ghichu=ghichu,
+                        user=request.user
+                    )
+                    created_count += 1
+        
+        messages.success(request, f'✅ Import thành công: {created_count} sản phẩm mới, {updated_count} sản phẩm cập nhật')
+        
+    except Exception as e:
+        messages.error(request, f'❌ Lỗi import: {str(e)}')
+    
+    return redirect('product_manager')

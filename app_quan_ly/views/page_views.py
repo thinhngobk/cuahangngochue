@@ -12,10 +12,7 @@ def index_view(request):
 
 @login_required
 def pos_view(request):
-    start = time.time()
-    print(f"\n{'='*60}")
-    print(f"[POS View] Started")
-    
+    start = time.time() 
     # Query customers với prefetch
     t1 = time.time()
     khach_hang_list = KhachHang.objects.prefetch_related(
@@ -26,7 +23,6 @@ def pos_view(request):
         )
     ).order_by('-id')
     count = khach_hang_list.count()
-    print(f"✓ Query customers: {(time.time() - t1)*1000:.0f}ms ({count} records)")
     
     # Build customers list
     t2 = time.time()
@@ -44,18 +40,15 @@ def pos_view(request):
             'sdt': kh.sdt or '',
             'tong_no': du_no
         })
-    print(f"✓ Build list: {(time.time() - t2)*1000:.0f}ms")
     
     # Session cleanup
     t3 = time.time()
     if 'edit_invoice_data' in request.session:
         del request.session['edit_invoice_data']
-    print(f"✓ Session cleanup: {(time.time() - t3)*1000:.0f}ms")
     
     # JSON serialize
     t4 = time.time()
     customers_json = json.dumps(customers)
-    print(f"✓ JSON serialize: {(time.time() - t4)*1000:.0f}ms ({len(customers_json)} chars)")
     
     context = {
         'customers_json': customers_json
@@ -64,11 +57,7 @@ def pos_view(request):
     # Render template
     t5 = time.time()
     response = render(request, 'pos.html', context)
-    print(f"✓ Template render: {(time.time() - t5)*1000:.0f}ms")
-    
     total = (time.time() - start) * 1000
-    print(f"⏱  TOTAL TIME: {total:.0f}ms")
-    print(f"{'='*60}\n")
     
     return response
 @login_required

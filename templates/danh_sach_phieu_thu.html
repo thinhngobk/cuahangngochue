@@ -187,7 +187,8 @@
                                     </button>
                                     {% endif %}
 
-                                    {% if p.trang_thai_duyet != 'canceled' %}
+                                    <!-- ← SỬA: Chỉ hiện nút hủy khi PENDING -->
+                                    {% if p.trang_thai_duyet == 'pending' %}
                                     <a href="{% url 'huy_phieu_thu' p.id %}" onclick="return confirm('Xác nhận hủy?')"
                                         class="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all hover:scale-110"
                                         title="Hủy">
@@ -298,14 +299,20 @@
                 </div>
 
                 <!-- FOOTER -->
+                <!-- FOOTER -->
                 <div class="flex gap-3 pt-4">
                     <button type="button" @click="showAddModal = false"
                         class="px-8 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition-all uppercase text-sm">
                         Hủy
                     </button>
-                    <button type="submit"
+
+                    <!-- ← SỬA: type="button" + @click + disabled -->
+                    <button type="button" @click="submitForm()" :disabled="isSubmitting"
+                        :class="{'opacity-50 cursor-not-allowed': isSubmitting}"
                         class="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black rounded-2xl shadow-lg transition-all uppercase text-sm">
-                        💾 Lưu phiếu thu
+
+                        <span x-show="!isSubmitting">💾 Lưu phiếu thu</span>
+                        <span x-show="isSubmitting">⏳ Đang lưu...</span>
                     </button>
                 </div>
             </form>
@@ -318,6 +325,7 @@
         return {
             showAddModal: false,
             editingId: null,
+            isSubmitting: false,
             searchQuery: '{{ search_query|default:""|escapejs }}',
             fromDate: '{{ tu_ngay|default:"" }}',
             toDate: '{{ den_ngay|default:"" }}',
@@ -351,7 +359,58 @@
                     }
                 }, 300);
             },
+            async submitForm() {
+                if (this.isSubmitting) {
+                    console.log('Đang submit, bỏ qua');
+                    return;
+                }
 
+                // Validate
+                if (!this.formData.khachhang_id) {
+                    alert("❌ Vui lòng chọn khách hàng!");
+                    return;
+                }
+
+                if (!this.formData.so_tien || parseFloat(this.formData.so_tien) <= 0) {
+                    alert("❌ Vui lòng nhập số tiền!");
+                    return;
+                }
+
+                this.isSubmitting = true;
+
+                try {
+                    const formData = new FormData();
+                    formData.append('csrfmiddlewaretoken', this.getCSRFToken());
+                    formData.append('khachhang_id', this.formData.khachhang_id);
+                    formData.append('so_tien', this.formData.so_tien);
+                    formData.append('hinh_thuc', this.formData.hinh_thuc);
+                    formData.append('ghi_chu', this.formData.ghi_chu);
+
+                    if (this.editingId) {
+                        formData.append('phieu_id', this.editingId);
+                    }
+
+                    const response = await fetch('{% url "luu_phieu_thu_nhanh" %}', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        alert(result.message);
+                        this.showAddModal = false;
+                        window.location.reload();
+                    } else {
+                        alert(result.message || '❌ Có lỗi xảy ra');
+                    }
+                } catch (error) {
+                    console.error('Submit error:', error);
+                    alert('❌ Lỗi kết nối!');
+                } finally {
+                    this.isSubmitting = false;
+                }
+            },
             selectCustomer(kh) {
                 this.formData.khachhang_id = kh.id;
                 this.customerSearch = kh.ten;
@@ -372,7 +431,16 @@
             init() {
                 console.log('Receipt manager initialized');
             },
-
+            getCSRFToken() {
+                const cookies = document.cookie.split(';');
+                for (let cookie of cookies) {
+                    const [name, value] = cookie.trim().split('=');
+                    if (name === 'csrftoken') {
+                        return decodeURIComponent(value);
+                    }
+                }
+                return '';
+            },
             filter() {
                 const params = new URLSearchParams();
                 if (this.searchQuery) params.append('search', this.searchQuery);

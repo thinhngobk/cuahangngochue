@@ -77,7 +77,7 @@
             customers: JSON.parse(document.getElementById('customers-data').textContent || '[]'),
             ngayLap: '',
             khachhang_id: "",
-            searchProdQuery: "",
+            productSearch: "",
             selectedQty: 1,           // THÊM DÒNG NÀY
             selectedProduct: null,    // THÊM DÒNG NÀY
             searchCust: "",
@@ -126,7 +126,15 @@
                 if (!str) return 0;
                 return parseFloat(str.toString().replace(/,/g, '')) || 0;
             },
-
+            selectProduct(product) {
+                this.selectedProduct = product;
+                this.productSearch = product.ten;
+                document.getElementById('search-results').innerHTML = '';
+                this.$nextTick(() => {
+                    this.$refs.qtyInput?.focus();
+                    this.$refs.qtyInput?.select();
+                });
+            },
             init() {
                 // Check localStorage cho edit
                 const savedData = localStorage.getItem('edit_invoice_data');
@@ -196,7 +204,7 @@
                 this.calculate();
 
                 // Reset
-                this.searchProdQuery = '';
+                this.productSearch = '';
                 this.selectedQty = 1;
                 this.selectedProduct = null;
                 this.$nextTick(() => document.getElementById('search-input')?.focus());
@@ -207,7 +215,13 @@
                     return;
                 }
                 this.addItem(this.selectedProduct);
-                document.getElementById('search-input')?.focus();
+
+                this.productSearch = '';
+                this.selectedProduct = null;
+                this.selectedQty = 1;
+                this.$nextTick(() => {
+                    this.$refs.productSearchInput?.focus();
+                });
             },
             removeItem(index) {
                 if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) {
@@ -443,14 +457,14 @@
                 <div class="flex gap-3">
                     <!-- Search Input -->
                     <div class="relative flex-1">
-                        <input type="text" id="search-input" x-model="searchProdQuery"
+                        <input type="text" x-model="productSearch" x-ref="productSearchInput"
                             class="w-full p-4 border-2 border-blue-100 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:outline-none text-xl font-bold transition-all placeholder:text-slate-300"
                             placeholder="F2: Tìm tên sản phẩm (≥2 ký tự)..." hx-get="/search-sp/"
                             hx-trigger="keyup[target.value.length >= 2] changed delay:300ms" hx-target="#search-results"
                             name="q" autocomplete="off">
-                        <div id="search-results" x-show="searchProdQuery.length >= 2"
+                        <div id="search-results" x-show="productSearch.length >= 2"
                             class="absolute w-full left-0 z-50 bg-white border shadow-2xl rounded-b-2xl mt-2 max-h-96 overflow-y-auto custom-scrollbar"
-                            @click.away="searchProdQuery = ''; $el.innerHTML = ''"></div>
+                            @click.away="productSearch = ''; $el.innerHTML = ''"></div>
                     </div>
 
                     <!-- Quantity Input -->

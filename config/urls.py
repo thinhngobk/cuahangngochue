@@ -44,11 +44,13 @@ urlpatterns = [
     path('api/get-customers/', login_required(customer_views.get_customers_api), name='get_customers_api'),
     path('api/customer-detail/<int:kh_id>/', login_required(customer_views.get_customer_detail_api), name='customer_detail_api'),
     path('api/update-customer/<int:kh_id>/', login_required(customer_views.update_customer_api), name='update_customer_api'),
+    path('api/toggle-customer-active/<int:customer_id>/', customer_views.toggle_customer_active),
     # API Sản phẩm
     path('api/get-products/', login_required(product_views.get_products_api), name='get_products_api'),
     path('api/update-product/<int:product_id>/', login_required(product_views.update_product_api), name='update_product_api'),
     path('api/toggle-product-status/<int:product_id>/', login_required(product_views.toggle_product_status), name='toggle_product_status'),
     path('api/search-customers/', login_required(customer_views.search_customers_api), name='search_customers_api'),
+    path('products/import/', product_views.import_products, name='product_import'),
         
 
     # Phiếu thu & Công nợ
@@ -78,10 +80,3 @@ if settings.DEBUG:
     urlpatterns = [
         path('__debug__/', include(debug_toolbar.urls)),
     ] + urlpatterns
-    
-    # Static files
-<<<<<<< HEAD
-    urlpatterns += static(settings.STATIC_URL, document_root=os.path.join(settings.BASE_DIR, 'static'))
-=======
-    urlpatterns += static(settings.STATIC_URL, document_root=os.path.join(settings.BASE_DIR, 'static'))
->>>>>>> a6dd4ba (ver2)
