@@ -11,4 +11,7 @@ gunicorn
 whitenoise==6.6.0
 dj-database-url
 django-debug-toolbar
+<<<<<<< HEAD
 psycopg2-pool
+=======
+>>>>>>> 449cc9460b345e86489ac2a37248b472d05ef1e4
