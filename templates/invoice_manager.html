@@ -16,6 +16,9 @@
             showModal: false,
             currentPage: 1,
             totalPages: 1,
+            totalCount: 0,        // ← THÊM
+            pendingCount: 0,      // ← THÊM
+            approvedCount: 0,     // ← THÊM
             selectedInvoice: {
                 id: null,
                 ma_hd: '',
@@ -32,6 +35,34 @@
             searchInvoiceCode: '',
             filterFromDate: '',
             filterToDate: '',
+            get filteredInvoices() {
+                return this.invoices.filter(hd => {
+                    // Filter by status
+                    if (this.filterStatus !== 'all' && hd.slug_status !== this.filterStatus) {
+                        return false;
+                    }
+
+                    // Filter by customer
+                    if (this.searchCustomer && !hd.khach.toLowerCase().includes(this.searchCustomer.toLowerCase())) {
+                        return false;
+                    }
+
+                    // Filter by invoice code
+                    if (this.searchInvoiceCode && !hd.ma_hd.toLowerCase().includes(this.searchInvoiceCode.toLowerCase())) {
+                        return false;
+                    }
+
+                    // Filter by date range
+                    if (this.filterFromDate && new Date(hd.ngay) < new Date(this.filterFromDate)) {
+                        return false;
+                    }
+                    if (this.filterToDate && new Date(hd.ngay) > new Date(this.filterToDate)) {
+                        return false;
+                    }
+
+                    return true;
+                });
+            },
             formatVND(n) {
                 let num = parseFloat(n) || 0;
                 return num.toLocaleString('en-US');
@@ -69,6 +100,9 @@
                     if (result.status === 'success') {
                         this.invoices = result.data;
                         this.totalPages = result.meta.total_pages || 1;
+                        this.totalCount = result.counts.total;
+                        this.pendingCount = result.counts.pending;
+                        this.approvedCount = result.counts.approved;
                     }
                 } catch (error) {
                     console.error("Lỗi lấy dữ liệu:", error);
@@ -206,17 +240,15 @@
                 <div class="flex gap-3">
                     <div class="bg-white rounded-2xl px-4 py-3 border-2 border-blue-100 shadow-sm">
                         <div class="text-xs font-bold text-slate-400 uppercase mb-1">Tổng HĐ</div>
-                        <div class="text-2xl font-black text-blue-600" x-text="invoices.length"></div>
+                        <div class="text-2xl font-black text-blue-600" x-text="totalCount || 0"></div>
                     </div>
                     <div class="bg-white rounded-2xl px-4 py-3 border-2 border-amber-100 shadow-sm">
                         <div class="text-xs font-bold text-slate-400 uppercase mb-1">Chờ duyệt</div>
-                        <div class="text-2xl font-black text-amber-600"
-                            x-text="invoices.filter(i => i.slug_status === 'pending').length"></div>
+                        <div class="text-2xl font-black text-amber-600" x-text="pendingCount || 0"></div>
                     </div>
                     <div class="bg-white rounded-2xl px-4 py-3 border-2 border-emerald-100 shadow-sm">
                         <div class="text-xs font-bold text-slate-400 uppercase mb-1">Đã duyệt</div>
-                        <div class="text-2xl font-black text-emerald-600"
-                            x-text="invoices.filter(i => i.slug_status === 'approved').length"></div>
+                        <div class="text-2xl font-black text-emerald-600" x-text="approvedCount || 0"></div>
                     </div>
                 </div>
             </div>
@@ -352,7 +384,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        <template x-for="hd in invoices" :key="hd.ma_hd">
+                        <template x-for="hd in filteredInvoices" :key="hd.ma_hd">
                             <tr
                                 class="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 group">
                                 <td class="p-6">
@@ -371,7 +403,7 @@
                                 <td class="p-6">
                                     <div class="font-bold text-slate-700" x-text="hd.ngay"></div>
                                     <div class="text-xs text-slate-400 font-medium uppercase tracking-tight mt-1"
-                                        x-text="'Bởi: ' + (hd.nguoi_tao || 'Hệ thống')"></div>
+                                        x-text="'Lập bởi: ' + (hd.nguoi_lap || 'Hệ thống')"></div>
                                 </td>
                                 <td class="p-6">
                                     <div class="font-bold text-slate-800 flex items-center gap-2">

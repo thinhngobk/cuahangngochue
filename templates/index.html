@@ -8,7 +8,7 @@
     <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-8 mb-8 text-white shadow-lg relative overflow-hidden">
         <div class="relative z-10 flex items-center justify-between">
             <div>
-                <h2 class="text-3xl font-bold mb-2">Xin chào, Admin! 👋</h2>
+                <h2 class="text-3xl font-bold mb-2">Xin chào, {{ request.user.get_full_name|default:request.user.username }}! 👋</h2>
                 <p class="text-blue-100 text-lg">Hôm nay là <span x-text="today" class="font-semibold"></span>. Chúc bạn một ngày bán hàng hiệu quả!</p>
             </div>
             <div class="hidden md:block">

@@ -229,7 +229,8 @@ def get_invoice_detail_api(request, ma_hd):
             'data': {
                 'id': hd.id,
                 'ma_hd': hd.mahoadonban,
-                'ngay': hd.ngaylap.strftime("%d/%m/%Y") if hd.ngaylap else (hd.ngaytao.strftime("%d/%m/%Y") if hd.ngaytao else ""),  # ← Ưu tiên ngaylap
+                'ngay': hd.ngaylap.strftime("%d/%m/%Y") if hd.ngaylap else (hd.ngaytao.strftime("%d/%m/%Y") if hd.ngaytao else ""), 
+                'nguoi_lap': h.user.username if h.user else 'Hệ thống', # ← Ưu tiên ngaylap
                 'khach': hd.khachhang.tenkhachhang if hd.khachhang else "Khách lẻ",
                 'tam_tinh': tong_cac_mon, 
                 'ck_tong_pt': float(hd.chietkhauchung or 0),
@@ -254,31 +255,42 @@ def get_invoices_api(request):
         tt_don = request.GET.get('status')
         tu_ngay = request.GET.get('from_date', '').strip()
         den_ngay = request.GET.get('to_date', '').strip()
-        invoice_code = request.GET.get('invoice_code', '').strip()  # ← THÊM dòng này
+        invoice_code = request.GET.get('invoice_code', '').strip()
         page_number = request.GET.get('page', 1)
         page_size = 15
 
-        hds = HoaDonBan.objects.select_related('khachhang').all().order_by('-ngaylap', '-ngaytao')  # ← Ưu tiên ngaylap
-        # ✅ LỌC THEO NGÀY (1 ngày cụ thể HOẶC khoảng ngày)
+        hds = HoaDonBan.objects.select_related('khachhang').all().order_by('-ngaylap', '-ngaytao')
+        
+        # Apply filters
         if tu_ngay and den_ngay:
             hds = hds.filter(ngaylap__range=[tu_ngay, den_ngay])
         elif tu_ngay:
             hds = hds.filter(ngaylap__gte=tu_ngay)
         elif den_ngay:
             hds = hds.filter(ngaylap__lte=den_ngay)
+            
         if search_query:
             q_nd = unidecode(search_query).lower()
             hds = hds.filter(
-                Q(mahoadonban__icontains=search_query) |                      # Mã HĐ
-                Q(khachhang__tenkhachhangkhongdau__icontains=q_nd) |          # Tên KH
-                Q(khachhang__sdt__icontains=search_query) |                   # SĐT
-                Q(khachhang__makhachhang__iexact=search_query)                # Mã KH
+                Q(mahoadonban__icontains=search_query) |
+                Q(khachhang__tenkhachhangkhongdau__icontains=q_nd) |
+                Q(khachhang__sdt__icontains=search_query) |
+                Q(khachhang__makhachhang__iexact=search_query)
             )
+            
         if invoice_code:
             hds = hds.filter(mahoadonban__icontains=invoice_code)
+            
         if tt_don and tt_don != 'all':
             hds = hds.filter(trangthaidon=tt_don)
 
+        # ← THÊM: Đếm theo filter (TRƯỚC khi phân trang)
+        total_filtered = hds.count()
+        pending_count = hds.filter(trangthaidon='pending').count()
+        approved_count = hds.filter(trangthaidon='approved').count()
+        canceled_count = hds.filter(trangthaidon='canceled').count()
+
+        # Paginate
         paginator = Paginator(hds, page_size)
         page_obj = paginator.get_page(page_number)
 
@@ -292,7 +304,8 @@ def get_invoices_api(request):
             data_list.append({
                 'id': h.id,
                 'ma_hd': h.mahoadonban,
-                'ngay': h.ngaylap.strftime("%d/%m/%Y") if h.ngaylap else h.ngaytao.strftime("%d/%m/%Y"),  # ← Ưu tiên ngaylap
+                'ngay': h.ngaylap.strftime("%d/%m/%Y") if h.ngaylap else h.ngaytao.strftime("%d/%m/%Y"),
+                'nguoi_lap': h.user.username if h.user else 'Hệ thống',
                 'khach': h.khachhang.tenkhachhang if h.khachhang else "Khách lẻ",
                 'tong': float(h.tongtienphaithanhtoan or 0),
                 'da_tt': float(tong_da_thu),
@@ -304,6 +317,12 @@ def get_invoices_api(request):
         return JsonResponse({
             'status': 'success', 
             'data': data_list,
+            'counts': {  # ← THÊM
+                'total': total_filtered,
+                'pending': pending_count,
+                'approved': approved_count,
+                'canceled': canceled_count,
+            },
             'meta': {
                 'current_page': page_obj.number,
                 'total_pages': paginator.num_pages,
@@ -316,7 +335,6 @@ def get_invoices_api(request):
         import traceback
         traceback.print_exc()
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
 @transaction.atomic
 def approve_invoice(request, ma_hd):
     """API duyệt hóa đơn bán hàng"""

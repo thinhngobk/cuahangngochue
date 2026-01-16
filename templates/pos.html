@@ -72,6 +72,7 @@
     document.addEventListener('alpine:init', () => {
         Alpine.data('posSystem', () => ({
             today: new Date().toLocaleDateString('vi-VN'),
+            isSubmitting: false,
             cart: [],
             customers: JSON.parse(document.getElementById('customers-data').textContent || '[]'),
             ngayLap: '',
@@ -289,6 +290,11 @@
             },
 
             async add_product_fast_js() {
+                // ← THÊM: Check nếu đang xử lý thì return
+                if (this.isSubmitting) {
+                    return;
+                }
+
                 const ten = this.newProd.ten;
                 const gia = this.parseNumber(this.newProd.gia);
 
@@ -296,6 +302,8 @@
                     alert("Vui lòng nhập tên sản phẩm!");
                     return;
                 }
+
+                this.isSubmitting = true;  // ← THÊM: Lock
 
                 try {
                     const response = await fetch('/add_product_fast/', {
@@ -308,9 +316,9 @@
                             ten: ten,
                             barcode: this.newProd.barcode,
                             gia_goc: this.parseNumber(this.newProd.gia_goc),
-                            gia_ban: gia,  // ← SỬA: gia thành gia_ban
+                            gia_ban: gia,
                             donvi: this.newProd.donvi,
-                            ton_kho: this.parseNumber(this.newProd.tonkho),  // ← SỬA: tonkho thành ton_kho
+                            ton_kho: this.parseNumber(this.newProd.tonkho),
                             ghichu: this.newProd.ghichu
                         })
                     });
@@ -341,6 +349,8 @@
                     }
                 } catch (error) {
                     alert("Lỗi kết nối!");
+                } finally {
+                    this.isSubmitting = false;  // ← THÊM: Unlock
                 }
             },
 
@@ -879,9 +889,11 @@
             <div class="flex gap-3 p-6 pt-4 border-t border-slate-100 shrink-0 bg-white rounded-b-[2rem]">
                 <button @click="showAddProd = false"
                     class="flex-1 bg-slate-100 hover:bg-slate-200 py-3 rounded-xl font-bold uppercase transition-all">Hủy</button>
-                <button @click="add_product_fast_js()"
-                    class="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-black uppercase tracking-widest">Thêm
-                    & Bán</button>
+                <button @click="add_product_fast_js()" :disabled="isSubmitting"
+                    :class="{'opacity-50 cursor-not-allowed': isSubmitting}" class="...">
+                    <span x-show="!isSubmitting">💾 Lưu</span>
+                    <span x-show="isSubmitting">⏳ Đang lưu...</span>
+                </button>
             </div>
         </div>
     </div>
