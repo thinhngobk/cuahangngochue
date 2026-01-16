@@ -80,4 +80,8 @@ if settings.DEBUG:
     ] + urlpatterns
     
     # Static files
+<<<<<<< HEAD
     urlpatterns += static(settings.STATIC_URL, document_root=os.path.join(settings.BASE_DIR, 'static'))
+=======
+    urlpatterns += static(settings.STATIC_URL, document_root=os.path.join(settings.BASE_DIR, 'static'))
+>>>>>>> a6dd4ba (ver2)

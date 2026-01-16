@@ -138,3 +138,38 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+<<<<<<< HEAD
+=======
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Security (production)
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Debug Toolbar
+if DEBUG:
+    INTERNAL_IPS = [
+        '127.0.0.1',
+        'localhost',
+    ]
+    
+    # Auto-detect IP
+    import socket
+    try:
+        hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
+        INTERNAL_IPS += [ip[: ip.rfind(".")] + ".1" for ip in ips]
+        INTERNAL_IPS += ips
+    except:
+        pass
+    
+    print(f"🔍 DEBUG TOOLBAR: INTERNAL_IPS = {INTERNAL_IPS}")
+
+    # Force show toolbar
+    DEBUG_TOOLBAR_CONFIG = {
+        'SHOW_TOOLBAR_CALLBACK': lambda request: DEBUG,
+    }
+>>>>>>> a6dd4ba (ver2)
