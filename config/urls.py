@@ -74,15 +74,3 @@ urlpatterns = [
     path('api/hoan/edit/<int:hh_id>/', return_views.edit_invoice_hoan, name='edit_invoice_hoan'),
     
 ]
-if settings.DEBUG:
-    # Debug toolbar
-    import debug_toolbar
-    urlpatterns = [
-        path('__debug__/', include(debug_toolbar.urls)),
-    ] + urlpatterns
-<<<<<<< HEAD
-=======
-    
-    # Static files
-    urlpatterns += static(settings.STATIC_URL, document_root=os.path.join(settings.BASE_DIR, 'static'))
->>>>>>> 449cc9460b345e86489ac2a37248b472d05ef1e4
