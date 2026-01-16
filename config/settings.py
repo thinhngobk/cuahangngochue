@@ -90,7 +90,6 @@ TEMPLATES = [
         },
     },
 ]
-
 # Database
 DATABASE_URL = os.getenv('DATABASE_URL')
 
@@ -102,6 +101,14 @@ if DATABASE_URL:
             conn_health_checks=True,
         )
     }
+    # THÊM OPTIONS sau khi parse
+    DATABASES['default']['OPTIONS'] = {
+        'connect_timeout': 10,
+        'keepalives': 1,
+        'keepalives_idle': 30,
+        'keepalives_interval': 10,
+        'keepalives_count': 5,
+    }
 else:
     DATABASES = {
         'default': {
@@ -112,9 +119,15 @@ else:
             'HOST': os.getenv('DB_HOST', '127.0.0.1'),
             'PORT': os.getenv('DB_PORT', '5433'),
             'CONN_MAX_AGE': 600,
+            'OPTIONS': {
+                'connect_timeout': 10,
+                'keepalives': 1,
+                'keepalives_idle': 30,
+                'keepalives_interval': 10,
+                'keepalives_count': 5,
+            }
         }
     }
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Security (production)
