@@ -22,6 +22,7 @@ def product_manager(request):
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
     
+    products_list = SanPham.objects.filter(user=request.user).order_by('-ngaycapnhat')
     products_data = [{
         'id': p.id,
         'ma': p.masanpham,

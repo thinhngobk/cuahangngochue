@@ -5,7 +5,7 @@
 
 {% block content %}
 {% csrf_token %}
-
+<script type="application/json" id="customers-data">{{ customers_json|safe }}</script>
 <div class="bg-slate-50 min-h-screen" x-data="customerManager()" x-init="init()" x-cloak>
     <style>
         [x-cloak] {
@@ -115,12 +115,12 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
-                        <template x-for="c in filteredCustomers" :key="c.id">
+                        <template x-for="(c, index) in paginatedCustomers" :key="c.id">
                             <tr class="hover:bg-purple-50 transition-colors duration-150">
                                 <td class="px-4 py-4">
                                     <div class="font-bold text-purple-600" x-text="c.ma"></div>
                                 </td>
-                                
+
                                 <td class="px-4 py-4">
                                     <div class="font-bold text-slate-800" x-text="c.ten"></div>
                                 </td>
@@ -197,6 +197,26 @@
                         <div class="text-xl font-bold text-slate-400">Không tìm thấy khách hàng</div>
                     </div>
                 </template>
+                <!-- PAGINATION -->
+                <div class="flex justify-between items-center p-4 bg-white border-t-2 border-blue-200">
+                    <div class="text-sm font-bold text-slate-600">
+                        Trang <span x-text="currentPage"></span>/<span x-text="totalPages"></span>
+                        (<span x-text="paginatedCustomers.length"></span>/<span
+                            x-text="filteredCustomers.length"></span> khách hàng)
+                    </div>
+                    <div class="flex gap-2">
+                        <button @click="currentPage = 1" :disabled="currentPage === 1"
+                            class="px-3 py-2 bg-blue-500 text-white rounded-lg font-bold disabled:opacity-30">««</button>
+                        <button @click="currentPage > 1 && currentPage--" :disabled="currentPage === 1"
+                            class="px-3 py-2 bg-blue-500 text-white rounded-lg font-bold disabled:opacity-30">‹</button>
+                        <span class="px-4 py-2 bg-blue-600 text-white rounded-lg font-black"
+                            x-text="currentPage"></span>
+                        <button @click="currentPage < totalPages && currentPage++" :disabled="currentPage >= totalPages"
+                            class="px-3 py-2 bg-blue-500 text-white rounded-lg font-bold disabled:opacity-30">›</button>
+                        <button @click="currentPage = totalPages" :disabled="currentPage >= totalPages"
+                            class="px-3 py-2 bg-blue-500 text-white rounded-lg font-bold disabled:opacity-30">»»</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -423,7 +443,9 @@
 <script>
     function customerManager() {
         return {
-            customers: [],
+            customers: JSON.parse(document.getElementById('customers-data')?.textContent || '[]'),
+            currentPage: 1,
+            perPage: 50,
             searchQuery: '',
             filterType: 'all',
             showModal: false,
@@ -551,7 +573,33 @@
                 const res = await fetch('/api/get-customers/');
                 this.customers = await res.json();
             },
+            get filteredCustomers() {
+                let filtered = this.customers;
 
+                if (this.searchQuery) {
+                    const q = this.searchQuery.toLowerCase();
+                    filtered = filtered.filter(c =>
+                        c.ten.toLowerCase().includes(q) ||
+                        c.ma.toLowerCase().includes(q) ||
+                        (c.sdt && c.sdt.includes(q))
+                    );
+                }
+
+                if (this.filterType !== 'all') {
+                    filtered = filtered.filter(c => c.phan_loai === this.filterType);
+                }
+
+                return filtered;
+            },
+
+            get paginatedCustomers() {
+                const start = (this.currentPage - 1) * this.perPage;
+                return this.filteredCustomers.slice(start, start + this.perPage);
+            },
+
+            get totalPages() {
+                return Math.ceil(this.filteredCustomers.length / this.perPage) || 1;
+            },
             get filteredCustomers() {
                 return this.customers.filter(c => {
                     const s = this.searchQuery.toLowerCase();

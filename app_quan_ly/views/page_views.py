@@ -61,7 +61,6 @@ def pos_view(request):
     
     return response
 @login_required
-@login_required
 def pos_hoan_view(request):
     khach_hangs = KhachHang.objects.prefetch_related(
         models.Prefetch(
@@ -153,8 +152,27 @@ def get_customers_api(request):
     return JsonResponse(data, safe=False)
 def customer_manager(request):
     """Trang quản lý khách hàng"""
-    return render(request, 'customer_manager.html')
-
+    customers = KhachHang.objects.filter(is_active=True).order_by('-id')
+    customers_data = [{
+        'id': kh.id,
+        'ma': kh.makhachhang,
+        'ten': kh.tenkhachhang,
+        'sdt': kh.sdt or '',
+        'email': kh.email or '',
+        'diachi': kh.diachi or '',
+        'phan_loai': kh.phanloai,
+        'du_no': float(kh.du_no_hien_tai),
+        'no_dau_ky': float(kh.no_dau_ky),
+        'han_muc_no': float(kh.han_muc_no),
+        'is_active': kh.is_active,
+        'mst': kh.mst or '',
+        'ghichu': kh.ghichu or ''
+    } for kh in customers]
+    
+    context = {
+        'customers_json': json.dumps(customers_data, ensure_ascii=False)
+    }
+    return render(request, 'customer_manager.html', context)
 def product_manager(request):
     """Trang quản lý sản phẩm"""
     return render(request, 'product_manager.html')
