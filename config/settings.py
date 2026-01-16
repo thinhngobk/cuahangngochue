@@ -24,7 +24,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'app_quan_ly',
-    'debug_toolbar', 
+    #'debug_toolbar', 
     'django.contrib.humanize',
 ]
 
