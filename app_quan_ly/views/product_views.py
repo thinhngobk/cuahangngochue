@@ -9,7 +9,7 @@ from django.db import transaction
 from django.db.models import Q, Case, When, Value, IntegerField
 from unidecode import unidecode
 from app_quan_ly.models import SanPham
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 import pandas as pd
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -17,12 +17,6 @@ from django.core.paginator import Paginator
 def product_manager(request):
     products = SanPham.objects.filter(user=request.user).order_by('-ngaycapnhat')
     
-    # Phân trang 50 sản phẩm/trang
-    paginator = Paginator(products, 50)
-    page_number = request.GET.get('page', 1)
-    page_obj = paginator.get_page(page_number)
-    
-    products_list = SanPham.objects.filter(user=request.user).order_by('-ngaycapnhat')
     products_data = [{
         'id': p.id,
         'ma': p.masanpham,
@@ -35,12 +29,10 @@ def product_manager(request):
         'ton_kho': p.tonkho,
         'ghichu': p.ghichu or '',
         'is_active': p.is_active
-    } for p in page_obj]
+    } for p in products]
     
     context = {
-        'products_json': json.dumps(products_data, ensure_ascii=False),
-        'page_obj': page_obj,
-        'total_products': paginator.count
+        'products_json': json.dumps(products_data, ensure_ascii=False)
     }
     return render(request, 'product_manager.html', context)
 def search_san_pham(request):
