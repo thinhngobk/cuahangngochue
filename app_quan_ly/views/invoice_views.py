@@ -13,8 +13,11 @@ from app_quan_ly.models import (
 )
 from app_quan_ly.templatetags.invoice_filters import number_to_words
 from .helper_views import update_ledger
-from django.contrib.auth.decorators import login_required
 from datetime import datetime, date
+from ..decorators import manager_or_higher, staff_or_higher
+from django.views.decorators.http import require_POST
+@require_POST
+@staff_or_higher
 @transaction.atomic
 def save_invoice(request):
     """
@@ -30,9 +33,9 @@ def save_invoice(request):
         items_data = data.get('items', [])
         edit_id = data.get('edit_id')
         
-        is_admin = request.user.is_superuser or request.user.has_perm('app_quan_ly.approve_hoadonban')
-        is_approve_request = data.get('admin_approve', False)
-        should_approve_now = is_admin and is_approve_request
+        user_groups = list(request.user.groups.values_list('name', flat=True))
+        is_manager_or_admin = request.user.is_superuser or 'Manager' in user_groups or 'Admin' in user_groups
+        should_approve_now = is_manager_or_admin  # Tự động duyệt nếu là Manager/Admin
         
         trang_thai_hd = 'approved' if should_approve_now else 'pending'
         trang_thai_pt = 'approved' if should_approve_now else 'pending'
@@ -230,7 +233,7 @@ def get_invoice_detail_api(request, ma_hd):
                 'id': hd.id,
                 'ma_hd': hd.mahoadonban,
                 'ngay': hd.ngaylap.strftime("%d/%m/%Y") if hd.ngaylap else (hd.ngaytao.strftime("%d/%m/%Y") if hd.ngaytao else ""), 
-                'nguoi_lap': h.user.username if h.user else 'Hệ thống', # ← Ưu tiên ngaylap
+                'nguoi_lap': hd.user.username if hd.user else 'Hệ thống',
                 'khach': hd.khachhang.tenkhachhang if hd.khachhang else "Khách lẻ",
                 'tam_tinh': tong_cac_mon, 
                 'ck_tong_pt': float(hd.chietkhauchung or 0),
@@ -335,14 +338,13 @@ def get_invoices_api(request):
         import traceback
         traceback.print_exc()
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+@require_POST
+@manager_or_higher
 @transaction.atomic
 def approve_invoice(request, ma_hd):
     """API duyệt hóa đơn bán hàng"""
     if request.method != "POST":
         return JsonResponse({'status': 'error', 'message': 'Yêu cầu không hợp lệ'}, status=405)
-    
-    if not request.user.is_superuser:
-        return JsonResponse({'status': 'error', 'message': 'Chỉ admin mới có quyền duyệt'}, status=403)
     
     try:
         with transaction.atomic():
@@ -384,74 +386,36 @@ def approve_invoice(request, ma_hd):
         import traceback
         traceback.print_exc()
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+@require_POST
+@manager_or_higher
 @transaction.atomic
 def cancel_invoice(request, ma_hd):
-    """API hủy hóa đơn"""
-    if request.method != "POST":
-        return JsonResponse({'status': 'error', 'message': 'Yêu cầu không hợp lệ'}, status=405)
-    
+    """API hủy hóa đơn - Chỉ cho phép hủy pending"""
     try:
         invoice = get_object_or_404(HoaDonBan, mahoadonban=ma_hd)
         
+        # Chỉ cho phép hủy khi pending
         if invoice.trangthaidon == 'approved':
-            # 1. Hoàn kho
-            for item in invoice.chitiet_ban.all():
-                if item.sanpham:
-                    item.sanpham.tonkho += item.soluong
-                    item.sanpham.save()
-            
-            # 2. Đảo ngược sổ hóa đơn
-            if invoice.khachhang:
-                khach = invoice.khachhang
-                last_entry = SoCaiCongNo.objects.filter(
-                    khachhang=khach
-                ).select_for_update().order_by('-ngay_ghi_so', '-id').first()
-                
-                no_hien_tai = Decimal(str(last_entry.du_no_tuc_thoi)) if last_entry else Decimal(str(khach.no_dau_ky))
-                giam = Decimal(str(invoice.tongtienphaithanhtoan))
-                no_moi = no_hien_tai - giam
-                
-                SoCaiCongNo.objects.create(
-                    khachhang=khach,
-                    ma_chung_tu=f"HUY-{invoice.mahoadonban}",
-                    dien_giai=f"Hủy hóa đơn {invoice.mahoadonban}",
-                    tang=0, giam=giam, du_no_tuc_thoi=no_moi,
-                    user=request.user,
-                    ghichu="Hệ thống tự động điều chỉnh khi hủy đơn"
-                )
-            
-            # 3. Hủy phiếu thu
-            phieu_thu = PhieuThu.objects.filter(mahoadon=invoice.mahoadonban).first()
-            if phieu_thu and phieu_thu.trang_thai_duyet == 'approved':
-                khach = phieu_thu.khachhang
-                last_entry = SoCaiCongNo.objects.filter(
-                    khachhang=khach
-                ).select_for_update().order_by('-ngay_ghi_so', '-id').first()
-                
-                no_hien_tai = Decimal(str(last_entry.du_no_tuc_thoi)) if last_entry else Decimal(str(khach.no_dau_ky))
-                tang = Decimal(str(phieu_thu.sotienthu))
-                no_moi = no_hien_tai + tang
-                
-                SoCaiCongNo.objects.create(
-                    khachhang=khach,
-                    ma_chung_tu=f"HUY-{phieu_thu.maphieuthu}",
-                    dien_giai=f"Hủy phiếu thu {phieu_thu.maphieuthu}",
-                    tang=tang, giam=0, du_no_tuc_thoi=no_moi,
-                    user=request.user,
-                    ghichu="Hệ thống tự động điều chỉnh khi hủy phiếu"
-                )
-                
-                phieu_thu.trang_thai_duyet = 'canceled'
-                phieu_thu.save()
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Không thể hủy hóa đơn đã duyệt!'
+            }, status=400)
         
-        # ✅ 4. Dùng update() thay vì save() để bypass validation
-        HoaDonBan.objects.filter(mahoadonban=ma_hd).update(trangthaidon='canceled')
+        if invoice.trangthaidon == 'canceled':
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Hóa đơn đã bị hủy rồi!'
+            }, status=400)
+        
+        # Hủy hóa đơn pending (không cần hoàn kho/ghi sổ)
+        invoice.trangthaidon = 'canceled'
+        invoice.save()
         
         return JsonResponse({
-            'status': 'success', 
-            'message': f'Đã hủy hóa đơn {ma_hd}'
+            'status': 'success',
+            'message': f'✅ Đã hủy đơn {invoice.mahoadonban}'
         })
-    
+        
     except Exception as e:
         import traceback
         traceback.print_exc()

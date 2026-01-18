@@ -7,7 +7,7 @@ from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from app_quan_ly.views import invoice_views, return_views,customer_views, product_views  # ← Thêm return_views
-
+from django.contrib.auth import views as auth_views
 urlpatterns = [
     # --- ĐIỀU HƯỚNG TRANG CHỦ ---
     path('', views.index_view, name='index'),
@@ -58,13 +58,11 @@ urlpatterns = [
     path('luu-phieu-thu-nhanh/', login_required(views.luu_phieu_thu_nhanh), name='luu_phieu_thu_nhanh'),
     path('duyet-phieu-thu/<int:pk>/', login_required(views.duyet_phieu_thu), name='duyet_phieu_thu'),
     path('huy-phieu-thu/<int:pk>/', login_required(views.huy_phieu_thu), name='huy_phieu_thu'),
-    path('update-ghi-chu-so-cai/', login_required(views.update_ghi_chu_so_cai), name='update_ghi_chu_so_cai'),
+    path('api/update-ghi-chu-so-cai/', login_required(views.update_ghi_chu_so_cai), name='update_ghi_chu_so_cai'),
     
     # === HOÀN HÀNG ===
     path('pos-hoan/', login_required(views.pos_hoan_view), name='pos_hoan'),
     path('hoa-don-hoan/', login_required(views.invoice_hoan_manager_view), name='invoice_hoan_manager'),
-    
-    # API Hoàn hàng
     path('api/save-invoice-hoan/', login_required(return_views.save_invoice_hoan), name='save_invoice_hoan'),
     path('api/invoices-hoan/', login_required(return_views.get_invoices_hoan_api), name='get_invoices_hoan_api'),
     path('api/invoice-hoan-detail/<str:ma_hd>/', login_required(return_views.get_invoice_hoan_detail_api), name='get_invoice_hoan_detail'),
@@ -73,4 +71,5 @@ urlpatterns = [
     path('api/copy-invoice-hoan/<int:hh_id>/', login_required(return_views.copy_invoice_hoan), name='copy_invoice_hoan'),  # ← Thêm login_required
     path('api/hoan/edit/<int:hh_id>/', return_views.edit_invoice_hoan, name='edit_invoice_hoan'),
     
+    path('change-password/', auth_views.PasswordChangeView.as_view(template_name='registration/change_password.html',success_url='/'), name='change_password'),
 ]

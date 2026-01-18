@@ -156,31 +156,39 @@
                         console.error("Lỗi load data:", e);
                     }
                 } else {
-                    // ✅ THÊM CHECK COPY Ở ĐÂY (khi không có edit)
+                    // ✅ CHECK COPY
                     const copyId = new URLSearchParams(window.location.search).get('copy');
                     if (copyId) {
                         fetch(`/api/copy-invoice/${copyId}/`)
                             .then(r => r.json())
                             .then(d => {
                                 if (d.status === 'success') {
-                                    this.cart = d.data.items;
+                                    // Map lại items cho đúng format cart
+                                    this.cart = d.data.items.map(item => ({
+                                        id: item.id,
+                                        ten: item.ten,
+                                        gia: item.gia,
+                                        soluong: item.soluong,
+                                        donvi: item.donvi,
+                                        ck_item: item.ck_item || 0,
+                                        ghichu_sp: item.ghichu_sp || ''
+                                    }));
+
                                     this.khachhang_id = d.data.khachhang_id;
                                     const customer = this.customers.find(c => c.id == d.data.khachhang_id);
                                     if (customer) this.searchCust = customer.ten;
-                                    this.chietkhau_tong = d.data.chietkhau_tong;
-                                    this.ghichu_don = d.data.ghichu_don;
+                                    this.chietkhau_tong = d.data.chietkhau_tong || 0;
+                                    this.ghichu_don = d.data.ghichu_don || '';
                                     this.calculate();
-                                    alert(`Đã sao chép từ ${d.data.ma_goc}`);
+                                    alert(`✅ Đã sao chép từ ${d.data.ma_goc}`);
+                                } else {
+                                    alert('❌ ' + d.message);
                                 }
                             })
-                            .catch(err => alert('Lỗi: ' + err));
-                    } else {
-                        // Load customers mặc định (nếu không edit và không copy)
-                        // BỎ PHẦN NÀY ĐI nếu không muốn auto-select khách
-                        // if (this.customers.length > 0) {
-                        //     this.khachhang_id = this.customers[0].id;
-                        //     this.searchCust = this.customers[0].ten;
-                        // }
+                            .catch(err => {
+                                console.error('Copy error:', err);
+                                alert('❌ Lỗi kết nối!');
+                            });
                     }
                 }
             },
@@ -260,13 +268,15 @@
                             'X-CSRFToken': this.getCSRFToken()
                         },
                         body: JSON.stringify({
-                            ten: ten,
-                            barcode: this.newProd.barcode,
-                            gia_goc: this.parseNumber(this.newProd.gia_goc),
-                            gia_ban: gia,  // ← SỬA: 'gia' thành 'gia_ban'
-                            donvi: this.newProd.donvi,
-                            ton_kho: this.parseNumber(this.newProd.tonkho),  // ← SỬA: 'tonkho' thành 'ton_kho'
-                            ghichu: this.newProd.ghichu
+                            ten: this.newCust.ten,
+                            sdt: this.newCust.sdt,
+                            phanloai: this.newCust.phanloai,
+                            diachi: this.newCust.diachi,
+                            email: this.newCust.email,
+                            mst: this.newCust.mst,
+                            no_dau_ky: this.newCust.no_dau_ky,
+                            han_muc_no: this.newCust.han_muc_no,
+                            ghichu: this.newCust.ghichu
                         })
                     });
 
@@ -446,7 +456,7 @@
 <div x-data="posSystem" x-cloak>
     {% csrf_token %}
     <!-- MAIN CONTENT -->
-    <div class="max-w-[99%] mx-auto p-3 grid grid-cols-12 gap-4 h-[calc(100vh-100px)] overflow-hidden">
+    <div class="max-w-[99%] mx-auto p-3 grid grid-cols-12 gap-4 h-[calc(100vh-100px)]">
 
         <!-- LEFT PANEL - PRODUCT LIST -->
         <div class="col-span-12 lg:col-span-9 space-y-3 h-full overflow-y-auto pr-2 custom-scrollbar">
@@ -460,7 +470,7 @@
                         <input type="text" x-model="productSearch" x-ref="productSearchInput"
                             class="w-full p-4 border-2 border-blue-100 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:outline-none text-xl font-bold transition-all placeholder:text-slate-300"
                             placeholder="F2: Tìm tên sản phẩm (≥2 ký tự)..." hx-get="/search-sp/"
-                            hx-trigger="keyup[target.value.length >= 2] changed delay:300ms" hx-target="#search-results"
+                            hx-trigger="keyup[target.value.length >= 2] changed delay:200ms" hx-target="#search-results"
                             name="q" autocomplete="off">
                         <div id="search-results" x-show="productSearch.length >= 2"
                             class="absolute w-full left-0 z-50 bg-white border shadow-2xl rounded-b-2xl mt-2 max-h-96 overflow-y-auto custom-scrollbar"

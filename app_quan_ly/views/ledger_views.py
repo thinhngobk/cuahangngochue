@@ -12,7 +12,8 @@ from app_quan_ly.models import (
 from django.db import transaction
 from django.utils import timezone  # ✅ THÊM DÒNG NÀY
 from decimal import Decimal
-
+from django.views.decorators.http import require_POST
+from ..decorators import staff_or_higher
 def get_customer_ledger_api(request, kh_id):
     """Lấy chi tiết lịch sử nợ (Sổ chi tiết công nợ)"""
     kh = get_object_or_404(KhachHang, id=kh_id)
@@ -212,7 +213,8 @@ def doi_chieu_cong_no_khach_hang(kh_id):
         'chenh_lech': chenh_lech,
         'khop': khop,
     }
-
+@require_POST
+@staff_or_higher
 def update_ghi_chu_so_cai(request):
     """API cập nhật ghi chú sổ cái"""
     if request.method == 'POST':

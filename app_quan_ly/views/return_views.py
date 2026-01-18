@@ -15,6 +15,10 @@ from app_quan_ly.models import (
 from datetime import datetime, date
 from django.db.models import Q
 from unidecode import unidecode
+from django.views.decorators.http import require_POST
+from ..decorators import manager_or_higher, staff_or_higher
+@require_POST
+@staff_or_higher
 @transaction.atomic
 def save_invoice_hoan(request):
     """API lưu đơn hoàn hàng"""
@@ -28,11 +32,12 @@ def save_invoice_hoan(request):
         if not items_data or len(items_data) == 0:
             return JsonResponse({'status': 'error', 'message': 'Giỏ hàng trống, không thể lưu!'}, status=400)
         is_admin = request.user.has_perm('app_name.approve_hoadonhoan')
-        is_approve_request = data.get('admin_approve', False)
+        # Manager/Admin tự động duyệt luôn
+        user_groups = list(request.user.groups.values_list('name', flat=True))
+        is_manager_or_admin = request.user.is_superuser or 'Manager' in user_groups or 'Admin' in user_groups
 
-        should_approve_now = is_admin and is_approve_request
+        should_approve_now = is_manager_or_admin
         trang_thai = 'approved' if should_approve_now else 'pending'
-
         # Tính tổng tiền hàng (để dùng cho final_total)
         tong_tien_hang = Decimal('0')
         for item in items_data:
@@ -222,7 +227,8 @@ def get_invoice_hoan_detail_api(request, ma_hd):
         import traceback
         traceback.print_exc()
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
+@require_POST
+@manager_or_higher
 @transaction.atomic
 def approve_invoice_hoan(request, hh_id):
     """
@@ -231,9 +237,6 @@ def approve_invoice_hoan(request, hh_id):
     """
     if request.method != "POST":
         return JsonResponse({'status': 'error', 'message': 'Yêu cầu không hợp lệ'}, status=405)
-    
-    if not request.user.is_superuser:
-        return JsonResponse({'status': 'error', 'message': 'Chỉ admin mới có quyền duyệt'}, status=403)
     
     try:
         hh = HoaDonHoan.objects.select_for_update().get(id=hh_id)
@@ -264,7 +267,8 @@ def approve_invoice_hoan(request, hh_id):
         traceback.print_exc()
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
-
+@require_POST
+@manager_or_higher
 @transaction.atomic
 def cancel_invoice_hoan(request, hh_id):
     """

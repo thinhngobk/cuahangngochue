@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block extra_css %}
+
 <head>
     <meta charset="UTF-8">
     <title>Lịch Sử Đơn Hoàn Hàng | Gemini POS</title>
@@ -35,10 +36,31 @@
                 display: none !important;
             }
         }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #ffe4e6;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(to bottom, #fb7185, #f43f5e);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(to bottom, #f43f5e, #e11d48);
+        }
     </style>
 </head>
 {% endblock %}
 {% block content %}
+
 <body class="bg-slate-100" x-data="invoiceHoanManager()" x-cloak>
     {% csrf_token %}
     <script>
@@ -54,6 +76,9 @@
                 loading: false,
                 showModal: false,
                 detail: {},
+                totalCount: 0,
+                pendingCount: 0,
+                approvedCount: 0,
                 filters: {
                     customer: '',
                     status: 'all',
@@ -97,7 +122,7 @@
                             invoice_code: this.filters.invoice_code,
                             from_date: this.filters.from_date,
                             to_date: this.filters.to_date,
-                            page: this.currentPage
+                            page: page
                         });
 
                         const res = await fetch(`/api/invoices-hoan/?${params}`);
@@ -106,6 +131,17 @@
                         if (result.status === 'success') {
                             this.invoices = result.data;
                             this.meta = result.meta;
+                            // Kiểm tra nếu có counts từ API
+                            if (result.counts) {
+                                this.totalCount = result.counts.total || 0;
+                                this.pendingCount = result.counts.pending || 0;
+                                this.approvedCount = result.counts.approved || 0;
+                            } else {
+                                // Tính tay nếu API chưa trả về counts
+                                this.totalCount = this.meta.total_items || 0;
+                                this.pendingCount = this.invoices.filter(inv => inv.slug_status === 'pending').length;
+                                this.approvedCount = this.invoices.filter(inv => inv.slug_status === 'approved').length;
+                            }
                         }
                     } catch (e) {
                         alert('Lỗi tải dữ liệu: ' + e.message);
@@ -144,7 +180,6 @@
                 },
 
                 async editInvoice(ma_hd) {
-                    // Chuyển đơn giản - không cần params phức tạp
                     window.location.href = `/pos-hoan/?edit=${ma_hd}`;
                 },
 
@@ -160,6 +195,7 @@
 
                         if (result.status === 'success') {
                             alert(result.message);
+                            this.showModal = false;
                             this.fetchInvoices(this.meta.current_page);
                         } else {
                             alert('Lỗi: ' + result.message);
@@ -175,8 +211,8 @@
                     });
                 },
 
-                copyInvoice(id) {
-                    window.location.href = `/pos-hoan/?copy=${id}`;
+                copyInvoice(ma_hd) {
+                    window.location.href = `/pos-hoan/?copy=${ma_hd}`;
                 },
 
                 async cancelInvoice(id, ma_hd) {
@@ -191,8 +227,8 @@
 
                         if (result.status === 'success') {
                             alert(result.message);
+                            this.showModal = false;
                             this.fetchInvoices(this.meta.current_page);
-                            if (this.showModal) this.showModal = false;
                         } else {
                             alert('Lỗi: ' + result.message);
                         }
@@ -212,6 +248,7 @@
             }));
         });
     </script>
+
     <!-- FILTER BAR -->
     <div class="max-w-[98%] mx-auto mb-4">
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-rose-200">
@@ -263,10 +300,63 @@
         </div>
     </div>
 
+    <!-- STATS CARDS -->
+    <div class="max-w-[98%] mx-auto mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Tổng đơn -->
+            <div class="bg-white rounded-2xl p-6 border-2 border-rose-200 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-black text-slate-400 uppercase mb-1">Tổng đơn hoàn</div>
+                        <div class="text-3xl font-black text-rose-600" x-text="totalCount"></div>
+                    </div>
+                    <div class="bg-rose-100 p-3 rounded-xl">
+                        <svg class="w-8 h-8 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chờ duyệt -->
+            <div class="bg-white rounded-2xl p-6 border-2 border-amber-200 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-black text-slate-400 uppercase mb-1">Chờ duyệt</div>
+                        <div class="text-3xl font-black text-amber-600" x-text="pendingCount"></div>
+                    </div>
+                    <div class="bg-amber-100 p-3 rounded-xl">
+                        <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Đã duyệt -->
+            <div class="bg-white rounded-2xl p-6 border-2 border-emerald-200 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-black text-slate-400 uppercase mb-1">Đã duyệt</div>
+                        <div class="text-3xl font-black text-emerald-600" x-text="approvedCount"></div>
+                    </div>
+                    <div class="bg-emerald-100 p-3 rounded-xl">
+                        <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- TABLE -->
     <div class="max-w-[98%] mx-auto">
-        <div class="bg-white rounded-2xl shadow-sm border border-rose-200 ">
-            <div class>
+        <div class="bg-white rounded-2xl shadow-sm border border-rose-200">
+            <div class="overflow-x-auto md:overflow-x-visible">
                 <table class="w-full">
                     <thead class="bg-rose-50 border-b-2 border-rose-200">
                         <tr class="text-[11px] font-black text-rose-600 uppercase tracking-wider">
@@ -367,10 +457,17 @@
                                             </button>
 
                                             <!-- Sao chép -->
-                                            <button @click="copyInvoice(inv.id)" x-show="inv.slug_status === 'approved'"
-                                                class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
-                                                📋 Sao chép
+                                            <button @click="copyInvoice(inv.id); open = false"
+                                                class="w-full px-4 py-3 text-left hover:bg-indigo-50 transition-colors flex items-center gap-3 text-sm font-bold text-slate-700 hover:text-indigo-700">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                </svg>
+                                                Sao chép
                                             </button>
+
                                             <div class="border-t border-slate-200"></div>
 
                                             <!-- Hủy (không show nếu đã canceled) -->
@@ -456,7 +553,7 @@
                 </div>
             </div>
 
-            <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+            <div class="p-6 overflow-y-auto max-h-[calc(90vh-280px)]">
                 <!-- THÔNG TIN CHUNG -->
                 <div class="grid grid-cols-2 gap-4 mb-6">
                     <div class="bg-rose-50 p-4 rounded-2xl">
@@ -528,8 +625,71 @@
                         x-text="detail.trang_thai_don"></span>
                 </div>
             </div>
+
+            <!-- MODAL FOOTER -->
+            <div class="sticky bottom-0 p-4 bg-slate-50 border-t border-slate-200 no-print">
+                <div class="flex flex-wrap gap-2 justify-end">
+                    <!-- Nút In -->
+                    <button @click="printInvoice(detail.ma_hd)"
+                        class="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-xl font-bold transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        In
+                    </button>
+
+                    <!-- Nút Sao chép -->
+                    <button @click="copyInvoice(detail.id)"
+                        class="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-bold transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Sao chép
+                    </button>
+
+                    <!-- Nút Sửa (chỉ hiện khi pending) -->
+                    <button @click="editInvoice(detail.ma_hd)" x-show="detail.slug_trang_thai === 'pending'"
+                        class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Sửa
+                    </button>
+
+                    <!-- Nút Duyệt (chỉ hiện khi pending) -->
+                    <button @click="approveInvoice(detail.id, detail.ma_hd)"
+                        x-show="detail.slug_trang_thai === 'pending'"
+                        class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Duyệt
+                    </button>
+
+                    <!-- Nút Hủy (không hiện nếu đã canceled) -->
+                    <button @click="cancelInvoice(detail.id, detail.ma_hd)"
+                        x-show="detail.slug_trang_thai !== 'canceled'"
+                        class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Hủy đơn
+                    </button>
+
+                    <!-- Nút Đóng -->
+                    <button @click="showModal = false"
+                        class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold transition-all">
+                        Đóng
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
-    
+
 </body>
 {% endblock %}

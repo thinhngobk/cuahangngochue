@@ -13,7 +13,7 @@ from django.contrib.auth.models import User
 from app_quan_ly.models import KhachHang, PhieuThu, HoaDonBan,SoCaiCongNo
 from .helper_views import update_ledger
 from django.views.decorators.http import require_POST
-
+from ..decorators import manager_or_higher, staff_or_higher
 def save_receipt(request):
     """API tạo phiếu thu (từ frontend)"""
     if request.method == 'POST':
@@ -91,8 +91,9 @@ def danh_sach_phieu_thu(request):
         'nguoi_lap_id': nguoi_lap_id
     })
 
-@transaction.atomic
 @require_POST
+@staff_or_higher  # ← THÊM
+@transaction.atomic
 def luu_phieu_thu_nhanh(request):
     """Lưu hoặc cập nhật phiếu thu"""
     try:
@@ -157,67 +158,108 @@ def luu_phieu_thu_nhanh(request):
             'status': 'error',
             'message': f'❌ Lỗi: {str(e)}'
         }, status=500)
+@require_POST
+@staff_or_higher  # ← SỬA: Staff có thể hủy pending, Manager hủy tất cả
 @transaction.atomic
 def huy_phieu_thu(request, pk):
     """Hủy phiếu thu"""
-    phieu_thu = get_object_or_404(PhieuThu, pk=pk)
-    
-    # ✅ CHẶN HỦY PHIẾU ĐÍNH KÈM HÓA ĐƠN
-    if phieu_thu.mahoadon:
-        messages.error(request, f'❌ Không thể hủy phiếu thu đính kèm hóa đơn {phieu_thu.mahoadon}. Vui lòng hủy từ hóa đơn.')
-        return redirect('danh_sach_phieu_thu')
-    
-    # Xử lý hủy như bình thường
-    if phieu_thu.trang_thai_duyet == 'approved':
-        # Đảo ngược sổ cái
-        khach = phieu_thu.khachhang
-        last_entry = SoCaiCongNo.objects.filter(
-            khachhang=khach
-        ).select_for_update().order_by('-ngay_ghi_so', '-id').first()
+    try:
+        phieu = PhieuThu.objects.get(pk=pk)
         
-        no_hien_tai = Decimal(str(last_entry.du_no_tuc_thoi)) if last_entry else Decimal(str(khach.no_dau_ky))
-        tang = Decimal(str(phieu_thu.sotienthu))
-        no_moi = no_hien_tai + tang
+        if phieu.trang_thai_duyet == 'canceled':
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Phiếu đã bị hủy rồi!'
+            })
         
-        SoCaiCongNo.objects.create(
-            khachhang=khach,
-            ma_chung_tu=f"HUY-{phieu_thu.maphieuthu}",
-            dien_giai=f"Hủy phiếu thu {phieu_thu.maphieuthu}",
-            tang=tang,
-            giam=0,
-            du_no_tuc_thoi=no_moi,
-            user=request.user,
-            ghichu="Hệ thống tự động điều chỉnh khi hủy phiếu"
-        )
-    
-    phieu_thu.trang_thai_duyet = 'canceled'
-    phieu_thu.save()
-    
-    messages.success(request, f'✅ Đã hủy phiếu thu {phieu_thu.maphieuthu}')
-    return redirect('danh_sach_phieu_thu')
-
+        # Chỉ Manager/Admin mới hủy được phiếu đã duyệt
+        if phieu.trang_thai_duyet == 'approved':
+            user_groups = list(request.user.groups.values_list('name', flat=True))
+            is_manager_or_admin = request.user.is_superuser or 'Manager' in user_groups or 'Admin' in user_groups
+            
+            if not is_manager_or_admin:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Chỉ Manager/Admin mới hủy được phiếu đã duyệt!'
+                }, status=403)
+            
+            # Ghi sổ đảo ngược
+            khach = phieu.khachhang
+            last_entry = SoCaiCongNo.objects.filter(
+                khachhang=khach
+            ).select_for_update().order_by('-ngay_ghi_so', '-id').first()
+            
+            no_hien_tai = Decimal(str(last_entry.du_no_tuc_thoi)) if last_entry else Decimal(str(khach.no_dau_ky))
+            tang = Decimal(str(phieu.sotienthu))
+            no_moi = no_hien_tai + tang
+            
+            SoCaiCongNo.objects.create(
+                khachhang=khach,
+                ma_chung_tu=f"HUY-{phieu.maphieuthu}",
+                dien_giai=f"Hủy phiếu thu {phieu.maphieuthu}",
+                tang=tang,
+                giam=0,
+                du_no_tuc_thoi=no_moi,
+                user=request.user,
+                ghichu="Hệ thống tự động điều chỉnh khi hủy phiếu"
+            )
+        
+        # Hủy phiếu (Staff hủy pending, Manager hủy tất cả)
+        phieu.trang_thai_duyet = 'canceled'
+        phieu.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã hủy phiếu thu thành công!'
+        })
+        
+    except PhieuThu.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy phiếu thu!'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Lỗi: {str(e)}'
+        }, status=500)
+@require_POST
+@manager_or_higher
 @transaction.atomic
 def duyet_phieu_thu(request, pk):
     """Duyệt phiếu thu"""
-    if request.method != 'POST':
-        return redirect('danh_sach_phieu_thu')
-    if not request.user.has_perm('app_name.approve_phieuthu'):
-        messages.error(request, "Chỉ Admin mới có quyền duyệt.")
-        return redirect('danh_sach_phieu_thu')
+    try:
+        phieu = PhieuThu.objects.get(pk=pk)
         
-    phieu = get_object_or_404(PhieuThu, pk=pk)
-    
-    if phieu.trang_thai_duyet == 'pending':
-        # ✅ CHẶN DUYỆT PHIẾU THU CÓ MÃ HÓA ĐƠN
-        if phieu.mahoadon and phieu.mahoadon.strip():
-            messages.warning(request, f"⚠️ Phiếu thu này đính kèm hóa đơn {phieu.mahoadon}. Vui lòng duyệt từ hóa đơn!")
-            return redirect('danh_sach_phieu_thu')
+        if phieu.trang_thai_duyet == 'approved':
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Phiếu thu đã được duyệt rồi!'
+            })
         
-        # Chỉ duyệt phiếu thu độc lập
+        if phieu.trang_thai_duyet == 'canceled':
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Không thể duyệt phiếu đã hủy!'
+            })
+        
+        # Duyệt phiếu → Signal tự động ghi sổ
         phieu.trang_thai_duyet = 'approved'
-        phieu.save()  # Signal tự ghi sổ
-        messages.success(request, f"✅ Đã duyệt phiếu thu {phieu.maphieuthu}")
-    else:
-        messages.warning(request, "Phiếu này đã được duyệt hoặc đã bị hủy trước đó.")
+        phieu.save()
         
-    return redirect('danh_sach_phieu_thu')
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Đã duyệt phiếu thu thành công!'
+        })
+        
+    except PhieuThu.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Không tìm thấy phiếu thu!'
+        }, status=404)
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Lỗi: {str(e)}'
+        }, status=500)
